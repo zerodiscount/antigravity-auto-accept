@@ -1,14 +1,13 @@
 {
-  "name": "auto-accept-antigravity",
-  "displayName": "Antigravity-AutoAccept",
-  "description": "Automatically accept AI agent actions (file edits, terminal commands) in VS Code — zero config, no launch flags needed",
-  "version": "0.7.7",
+  "name": "hygient-antigravity-autoaccept",
+  "displayName": "Hygient AutoAccept for Antigravity",
+  "description": "Automatically accept AI agent actions (file edits, terminal commands, tool executions) in Antigravity IDE while preserving manual Plan reviews",
+  "version": "1.0.0",
   "icon": "icon.png",
-  "publisher": "kaushiksaravanan",
-  "author": "Kaushik Saravanan",
+  "publisher": "Hygient",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kaushiksaravanan/Antigravity-AutoAccecpt.git"
+    "url": "ssh://git@10.2.100.120:2222/aurametrics/hygient-antigravity-autoaccept.git"
   },
   "engines": {
     "vscode": "^1.90.0"
@@ -21,7 +20,7 @@
     "automation",
     "auto",
     "accept",
-    "vibe-coding"
+    "hygient"
   ],
   "categories": [
     "Machine Learning",
@@ -36,27 +35,23 @@
     "commands": [
       {
         "command": "autoAcceptAgent.toggle",
-        "title": "Auto Accept: Toggle"
+        "title": "Hygient AutoAccept: Toggle"
       },
       {
         "command": "autoAcceptAgent.start",
-        "title": "Auto Accept: Start"
+        "title": "Hygient AutoAccept: Start"
       },
       {
         "command": "autoAcceptAgent.stop",
-        "title": "Auto Accept: Stop"
+        "title": "Hygient AutoAccept: Stop"
       },
       {
         "command": "autoAcceptAgent.acceptNow",
-        "title": "Auto Accept: Accept All Now"
+        "title": "Hygient AutoAccept: Accept All Pending Now"
       },
       {
         "command": "autoAcceptAgent.diagnostics",
-        "title": "Auto Accept: Run Diagnostics"
-      },
-      {
-        "command": "autoAcceptAgent.showPaywall",
-        "title": "Auto Accept: Show RevenueCat Paywall"
+        "title": "Hygient AutoAccept: Run Diagnostics"
       }
     ],
     "keybindings": [
@@ -67,7 +62,7 @@
       }
     ],
     "configuration": {
-      "title": "Auto Accept Agent",
+      "title": "Hygient AutoAccept",
       "properties": {
         "autoAcceptAgent.enableCommandPolling": {
           "type": "boolean",
@@ -84,7 +79,7 @@
         "autoAcceptAgent.autoConfigureSettings": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically configure VS Code/Antigravity settings to skip command approval prompts."
+          "description": "Automatically configure VS Code/Antigravity settings to skip routine command approval prompts."
         },
         "autoAcceptAgent.interceptNotifications": {
           "type": "boolean",
@@ -94,7 +89,7 @@
         "autoAcceptAgent.enableCDP": {
           "type": "boolean",
           "default": false,
-          "description": "Enable optional CDP fallback to click approval buttons directly in webviews when command polling cannot reach them. This is off by default for zero-config usage."
+          "description": "Enable optional CDP fallback to click approval buttons directly in webviews when command polling cannot reach them. Default: false."
         },
         "autoAcceptAgent.customButtonTexts": {
           "type": "array",
@@ -102,7 +97,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Additional button text labels to auto-click in the agent UI (for custom/localized prompts)."
+          "description": "Additional button text labels to auto-click in the agent UI."
         },
         "autoAcceptAgent.blockedCommands": {
           "type": "array",
@@ -113,13 +108,10 @@
             "rm -rf /",
             "format",
             "mkfs",
-            "del",
-            "del *",
-            "rmdir",
-            "rd",
-            "erase"
+            "del /f /s /q c:\\",
+            "rmdir /s /q c:\\"
           ],
-          "description": "A list of strings or command snippets that, if detected near the 'Run' button, will prevent the agent from automatically accepting."
+          "description": "Commands that will never be auto-accepted."
         }
       }
     }
@@ -139,7 +131,6 @@
     "typescript": "^5.4.0"
   },
   "dependencies": {
-    "@revenuecat/purchases-js": "^1.26.2",
     "ws": "^8.19.0"
   }
 }
