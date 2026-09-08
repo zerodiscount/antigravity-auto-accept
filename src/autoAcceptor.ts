@@ -36,6 +36,8 @@ export class AutoAcceptor implements vscode.Disposable {
     private executedCount = 0;
     private settingsApplied = false;
     private lastActivity = '';
+    private lastUserInteractionTime = 0;
+    private readonly USER_INTERACTION_GRACE_MS = 1500;
     private readonly originalGlobalSettings = new Map<string, {
         section: string;
         key: string;
@@ -43,20 +45,30 @@ export class AutoAcceptor implements vscode.Disposable {
         value: unknown;
     }>();
 
+    private isUserInteracting(): boolean {
+        return (Date.now() - this.lastUserInteractionTime) < this.USER_INTERACTION_GRACE_MS;
+    }
+
     /**
      * Routine accept/approve/run commands across Antigravity.
      * EXCLUDES any plan review / submission commands.
      */
     private readonly criticalAcceptCommands: string[] = [
-        // Antigravity Agent Steps (the "Run" / "Accept" button)
-        'antigravity.agent.acceptAgentStep',
-        'antigravity.agent.acceptAllAgentSteps',
+        // Antigravity Native Diff & File Acceptance ("Accept Changes" / "Accept All" in Cascade)
+        'antigravity.prioritized.agentAcceptAllInFile',
+        'antigravity.closeAllDiffZones',
+        'antigravity.prioritized.agentAcceptFocusedHunk',
+        'antigravity.prioritized.submitCodeAcknowledgement',
+
+        // Antigravity Terminal & Command Confirmation
         'antigravity.command.accept',
         'antigravity.terminalCommand.accept',
         'antigravity.terminalCommand.run',
 
-        // Antigravity hunk-level acceptance
-        'antigravity.prioritized.agentAcceptFocusedHunk',
+        // VS Code Inline Chat & Tools
+        'inlineChat.acceptChanges',
+        'chat.action.acceptTool',
+        'workbench.action.chat.accept',
 
         // Notification acceptance (catches "Allow", "Run", "Yes" popups)
         'notification.acceptPrimaryAction',
@@ -66,11 +78,10 @@ export class AutoAcceptor implements vscode.Disposable {
     private readonly secondaryAcceptCommands: string[] = [
         // VS Code built-in chat / editing
         'workbench.action.chat.accept',
+        'inlineChat.keep',
 
         // Terminal suggestions
         'workbench.action.terminal.chat.runCommand',
-        'workbench.action.terminal.chat.acceptCommand',
-        'workbench.action.terminal.chat.insertCommand',
     ];
 
     /**
@@ -79,12 +90,18 @@ export class AutoAcceptor implements vscode.Disposable {
     private readonly autoApproveSettings: Array<[string, string, unknown]> = [
         ['chat.tools', 'autoApprove', true],
         ['chat.tools.global', 'autoApprove', true],
+        ['chat.tools.edits', 'autoApprove', true],
+        ['chat.tools', 'autoApprove.edits', true],
         ['chat.tools.terminal', 'enableAutoApprove', true],
         ['chat.tools.terminal', 'autoApprove', true],
-        ['chat.agent', 'autoApprove', true],
-        ['chat.agent', 'maxRequests', 999],
+        ['chat.tools.urls', 'autoApprove', true],
         ['chat.tools.run_command', 'autoApprove', true],
         ['chat.tools.default_api:run_command', 'autoApprove', true],
+        ['chat.tools.write_to_file', 'autoApprove', true],
+        ['chat.tools.replace_file_content', 'autoApprove', true],
+        ['chat.tools.multi_replace_file_content', 'autoApprove', true],
+        ['chat.agent', 'autoApprove', true],
+        ['chat.agent', 'maxRequests', 999],
         ['terminal.integrated', 'confirmOnKill', 'never'],
         ['terminal.integrated', 'confirmOnPaste', false],
         ['security.workspace.trust', 'enabled', false],
@@ -323,10 +340,11 @@ export class AutoAcceptor implements vscode.Disposable {
 
     private async fastPoll(): Promise<void> {
         if (!this.isRunning || this.isDisposed) { return; }
+        if (this.isUserInteracting()) { return; }
         const interceptNotifications = this.shouldInterceptNotifications();
 
         for (const cmd of this.criticalAcceptCommands) {
-            if (this.isDisposed || !this.isRunning) { break; }
+            if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
             if (!interceptNotifications && cmd.toLowerCase().includes('notification')) { continue; }
             try {
                 await vscode.commands.executeCommand(cmd);
@@ -340,12 +358,13 @@ export class AutoAcceptor implements vscode.Disposable {
         if (this.isPollInProgress || !this.isRunning || this.isDisposed) {
             return;
         }
+        if (this.isUserInteracting()) { return; }
 
         this.isPollInProgress = true;
 
         try {
             for (const cmd of this.secondaryAcceptCommands) {
-                if (this.isDisposed || !this.isRunning) { break; }
+                if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
                 try {
                     await vscode.commands.executeCommand(cmd);
                 } catch {
@@ -400,17 +419,44 @@ export class AutoAcceptor implements vscode.Disposable {
             );
         }
 
+        // Track user interaction: pause polling while user types or moves cursor
+        this.trackingDisposables.push(
+            vscode.window.onDidChangeTextEditorSelection((e) => {
+                if (e.kind === vscode.TextEditorSelectionChangeKind.Keyboard || e.kind === vscode.TextEditorSelectionChangeKind.Mouse) {
+                    this.lastUserInteractionTime = Date.now();
+                }
+            })
+        );
+
+        this.trackingDisposables.push(
+            vscode.workspace.onDidChangeTextDocument((e) => {
+                if (this.isRunning && e.contentChanges.length > 0) {
+                    this.lastUserInteractionTime = Date.now();
+                    this.lastActivity = `Edited ${e.document.fileName.split(/[\\/]/).pop()}`;
+                }
+            })
+        );
+
         this.trackingDisposables.push(
             vscode.window.onDidChangeActiveTextEditor(async () => {
                 if (this.isRunning && !this.isDisposed) {
+                    if (this.isUserInteracting()) { return; }
                     setTimeout(() => {
                         void (async () => {
-                            if (!this.isRunning || this.isDisposed) { return; }
-                            try {
-                                await vscode.commands.executeCommand('antigravity.agent.acceptAgentStep');
-                            } catch { }
+                            if (!this.isRunning || this.isDisposed || this.isUserInteracting()) { return; }
+                            const fileAcceptCmds = [
+                                'antigravity.prioritized.agentAcceptAllInFile',
+                                'antigravity.prioritized.agentAcceptFocusedHunk',
+                                'antigravity.closeAllDiffZones',
+                                'inlineChat.acceptChanges',
+                            ];
+                            for (const cmd of fileAcceptCmds) {
+                                try {
+                                    await vscode.commands.executeCommand(cmd);
+                                } catch { }
+                            }
                         })().catch(() => { });
-                    }, 200);
+                    }, 250);
                 }
             })
         );
@@ -418,14 +464,23 @@ export class AutoAcceptor implements vscode.Disposable {
         this.trackingDisposables.push(
             vscode.window.onDidChangeVisibleTextEditors(async () => {
                 if (this.isRunning && !this.isDisposed) {
+                    if (this.isUserInteracting()) { return; }
                     setTimeout(() => {
                         void (async () => {
-                            if (!this.isRunning || this.isDisposed) { return; }
-                            try {
-                                await vscode.commands.executeCommand('antigravity.agent.acceptAgentStep');
-                            } catch { }
+                            if (!this.isRunning || this.isDisposed || this.isUserInteracting()) { return; }
+                            const fileAcceptCmds = [
+                                'antigravity.prioritized.agentAcceptAllInFile',
+                                'antigravity.prioritized.agentAcceptFocusedHunk',
+                                'antigravity.closeAllDiffZones',
+                                'inlineChat.acceptChanges',
+                            ];
+                            for (const cmd of fileAcceptCmds) {
+                                try {
+                                    await vscode.commands.executeCommand(cmd);
+                                } catch { }
+                            }
                         })().catch(() => { });
-                    }, 300);
+                    }, 350);
                 }
             })
         );
@@ -674,7 +729,7 @@ export class AutoAcceptor implements vscode.Disposable {
 
     private buildPermissionScript(customTexts: string[]): string {
         const allowedTexts = [
-            'run', 'accept',
+            'run', 'accept', 'accept changes', 'accept all', 'accept all in file', 'keep', 'keep changes',
             'always allow', 'allow this conversation', 'allow',
             ...customTexts
         ];
@@ -687,7 +742,9 @@ export class AutoAcceptor implements vscode.Disposable {
 
     if (!document.querySelector('.react-app-container') && 
         !document.querySelector('[class*="agent"]') &&
-        !document.querySelector('[data-vscode-context]')) {
+        !document.querySelector('[data-vscode-context]') &&
+        !document.querySelector('.monaco-editor') &&
+        !document.querySelector('.diffZoneWidget')) {
         return 'not-agent-panel';
     }
     

@@ -31,13 +31,18 @@ export function activate(context: vscode.ExtensionContext): void {
             cmd('autoAcceptAgent.diagnostics', () => runDiagnostics(output)),
             cmd('autoAcceptAgent.acceptNow', async () => {
                 const cmds = [
-                    'antigravity.agent.acceptAgentStep',
+                    'antigravity.prioritized.agentAcceptAllInFile',
+                    'antigravity.closeAllDiffZones',
+                    'antigravity.prioritized.agentAcceptFocusedHunk',
+                    'antigravity.prioritized.submitCodeAcknowledgement',
                     'antigravity.command.accept',
                     'antigravity.terminalCommand.accept',
                     'antigravity.terminalCommand.run',
-                    'antigravity.prioritized.agentAcceptFocusedHunk',
-                    'notification.acceptPrimaryAction',
+                    'inlineChat.acceptChanges',
+                    'chat.action.acceptTool',
                     'workbench.action.chat.accept',
+                    'notification.acceptPrimaryAction',
+                    'notifications.acceptPrimaryAction',
                     'workbench.action.terminal.chat.runCommand',
                 ];
                 for (const c of cmds) {

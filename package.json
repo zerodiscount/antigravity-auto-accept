@@ -2,7 +2,7 @@
   "name": "hygient-antigravity-autoaccept",
   "displayName": "Hygient AutoAccept for Antigravity",
   "description": "Automatically accept AI agent actions (file edits, terminal commands, tool executions) in Antigravity IDE while preserving manual Plan reviews",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "icon": "icon.png",
   "publisher": "Hygient",
   "repository": {
@@ -12,6 +12,10 @@
   "engines": {
     "vscode": "^1.90.0"
   },
+  "extensionKind": [
+    "ui",
+    "workspace"
+  ],
   "keywords": [
     "auto-accept",
     "antigravity",
@@ -120,7 +124,7 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "package": "vsce package",
+    "package": "vsce package --baseContentUrl http://10.2.100.120:3000/aurametrics/hygient-antigravity-autoaccept/raw/branch/master --baseImagesUrl http://10.2.100.120:3000/aurametrics/hygient-antigravity-autoaccept/raw/branch/master --allow-missing-repository",
     "publish": "vsce publish"
   },
   "devDependencies": {
