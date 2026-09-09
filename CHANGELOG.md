@@ -2,6 +2,18 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.3] - 2026-09-09
+
+### Removed
+- **Silent Operation**: Completely removed intrusive startup and toggle popup notification toasts (`Antigravity AutoAccept: Running (Plan reviews remain manual)`). State is communicated seamlessly via the persistent status bar item (`$(zap) Antigravity AutoAccept: ON`).
+
+## [1.2.2] - 2026-09-09
+
+### Fixed
+- **Prevent Boot Loop**: Disabled background update polling and automatic reload notifications.
+- **Notification Safety**: Removed `notification.acceptPrimaryAction` from automated accept commands to prevent auto-accepting window reload notifications or destructive system alerts.
+- Defaults for `checkForUpdates`, `autoUpdate`, and `interceptNotifications` now default to `false`.
+
 ## [1.2.1] - 2026-09-09
 
 ### Fixed

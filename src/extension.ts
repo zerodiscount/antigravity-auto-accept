@@ -19,8 +19,8 @@ export function activate(context: vscode.ExtensionContext): void {
 
         const cmd = (id: string, fn: () => Promise<void>) =>
             vscode.commands.registerCommand(id, async () => {
-                try { 
-                    await fn(); 
+                try {
+                    await fn();
                 } catch (e) {
                     const msg = e instanceof Error ? e.message : String(e);
                     vscode.window.showErrorMessage(`Antigravity AutoAccept: ${msg}`);
@@ -48,7 +48,7 @@ export function activate(context: vscode.ExtensionContext): void {
                     'inlineChat.acceptChanges',
                     'chat.action.acceptTool',
                     'workbench.action.chat.accept',
-                                                            'workbench.action.terminal.chat.runCommand',
+                    'workbench.action.terminal.chat.runCommand',
                 ];
                 for (const c of cmds) {
                     try { await vscode.commands.executeCommand(c); } catch { }

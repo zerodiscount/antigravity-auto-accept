@@ -2,7 +2,7 @@
   "name": "antigravity-auto-accept",
   "displayName": "Antigravity AutoAccept",
   "description": "Zero-friction, free, and open-source auto-acceptance for AI agent edits, diffs, and terminal commands in Google Antigravity. Built for local desktop & Remote-SSH with Plan review safety.",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "icon": "icon.png",
   "publisher": "zerodiscount",
   "repository": {
