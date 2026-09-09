@@ -116,8 +116,9 @@ for srv in servers:
                     settings = json.load(f)
             except Exception:
                 settings = {}
-        settings["autoAcceptAgent.checkForUpdates"] = False
-        settings["autoAcceptAgent.autoUpdate"] = False
+        settings.pop("autoAcceptAgent.checkForUpdates", None)
+        settings.pop("autoAcceptAgent.autoUpdate", None)
+        settings.pop("autoAcceptAgent.updateServerUrl", None)
         with open(settings_path, "w") as f:
             json.dump(settings, f, indent=4)
 

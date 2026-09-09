@@ -2,7 +2,7 @@
   "name": "antigravity-auto-accept",
   "displayName": "Antigravity AutoAcceptClose",
   "description": "Zero-friction auto-acceptance and smart auto-close for AI agent edits, diffs, and terminal commands in Google Antigravity. Automatically sweeps and closes agent-opened file tabs while protecting user files and plan reviews.",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "icon": "icon.png",
   "publisher": "zerodiscount",
   "repository": {
@@ -58,11 +58,6 @@
       {
         "command": "autoAcceptAgent.diagnostics",
         "title": "Run Diagnostics",
-        "category": "Antigravity AutoAccept"
-      },
-      {
-        "command": "autoAcceptAgent.checkForUpdates",
-        "title": "Check for Updates",
         "category": "Antigravity AutoAccept"
       }
     ],
@@ -129,21 +124,6 @@
             "rmdir /s /q c:\\"
           ],
           "description": "Commands that will never be auto-accepted."
-        },
-        "autoAcceptAgent.checkForUpdates": {
-          "type": "boolean",
-          "default": false,
-          "description": "Periodically check for extension updates from internal Forgejo Git server."
-        },
-        "autoAcceptAgent.autoUpdate": {
-          "type": "boolean",
-          "default": false,
-          "description": "Automatically download and install updates from internal Forgejo server when available."
-        },
-        "autoAcceptAgent.updateServerUrl": {
-          "type": "string",
-          "default": "http://10.2.100.120:3000",
-          "description": "Internal Forgejo server URL for extension updates."
         },
         "autoAcceptAgent.autoCloseAcceptedEditors": {
           "type": "boolean",
