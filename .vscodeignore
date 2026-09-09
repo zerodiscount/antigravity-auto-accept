@@ -18,6 +18,7 @@ process_debug_info.txt
 settings.json
 settings_utf8.json
 test_commands_to_run.ps1
-test_file.txt
-test_monetization_script.js
-old vers/**
+install_to_ag_*.py
+*.py
+*.sh
+scratch/**

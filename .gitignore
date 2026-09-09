@@ -2,6 +2,5 @@ node_modules/
 out/
 .vscode-test/
 *.vsix
-!hygient-antigravity-autoaccept.vsix
 .DS_Store
 !antigravity-auto-accept.vsix

@@ -2,6 +2,13 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.9] - 2026-09-09
+
+### Privacy & Packaging Cleanliness
+- **Package Exclusion Hardening**: Enhanced `.vscodeignore` to strictly exclude all local Python helper scripts, shell tools, and internal automation utilities from packaged VSIX artifacts.
+- **Generic Deployment Logic**: Replaced all legacy internal strings in helper scripts with clean, dynamic patterns.
+- **Repository Hygiene**: Purged obsolete binary artifacts from version control.
+
 ## [1.2.8] - 2026-09-09
 
 ### Removed & Privacy Hardened

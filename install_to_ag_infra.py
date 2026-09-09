@@ -6,12 +6,13 @@ import shutil
 import time
 import glob
 
-pkg = json.load(open("/mnt/dev_ai_core/workspace/Dev/Tools/hygient-antigravity-autoaccept/package.json"))
+script_dir = os.path.dirname(os.path.abspath(__file__))
+pkg = json.load(open(os.path.join(script_dir, "package.json")))
 version = pkg["version"]
 publisher = pkg.get("publisher", "zerodiscount")
 ext_name = pkg.get("name", "antigravity-auto-accept")
 ext_id = f"{publisher}.{ext_name}"
-vsix_path = "/home/antigravity/Workspace/Dev/Tools/hygient-antigravity-autoaccept/antigravity-auto-accept.vsix"
+vsix_path = os.path.join(script_dir, "antigravity-auto-accept.vsix")
 
 # 1. Local ag-infra deployment
 servers = [
@@ -29,10 +30,11 @@ for srv in servers:
     obsolete_json_path = os.path.join(ext_base, ".obsolete")
 
     print(f"[ag-infra] Cleaning old extensions in {ext_base}...")
-    for pattern in ["hygient.hygient-antigravity-autoaccept-*", f"{ext_id}-*"]:
+    for pattern in ["*autoaccept-*", "*auto-accept-*", f"{ext_id}-*"]:
         for old_dir in glob.glob(os.path.join(ext_base, pattern)):
-            print(f"  Removing: {old_dir}")
-            shutil.rmtree(old_dir, ignore_errors=True)
+            if old_dir != dest_dir:
+                print(f"  Removing: {old_dir}")
+                shutil.rmtree(old_dir, ignore_errors=True)
 
     print(f"[ag-infra] Installing v{version} to {dest_dir}...")
     os.makedirs(dest_dir, exist_ok=True)
@@ -87,7 +89,7 @@ for srv in servers:
                 extensions = json.load(f)
         except Exception:
             extensions = []
-    extensions = [e for e in extensions if e.get("identifier", {}).get("id") not in ("hygient.hygient-antigravity-autoaccept", ext_id)]
+    extensions = [e for e in extensions if "autoaccept" not in e.get("identifier", {}).get("id", "").lower() and "auto-accept" not in e.get("identifier", {}).get("id", "").lower()]
     extensions.append(ext_entry)
 
     with open(extensions_json_path, "w") as f:
@@ -98,7 +100,7 @@ for srv in servers:
         try:
             with open(obsolete_json_path, "r") as f:
                 obsolete = json.load(f)
-            keys = [k for k in obsolete if "hygient-antigravity-autoaccept" in k or "antigravity-auto-accept" in k]
+            keys = [k for k in obsolete if "autoaccept" in k.lower() or "auto-accept" in k.lower()]
             for k in keys:
                 del obsolete[k]
             with open(obsolete_json_path, "w") as f:
