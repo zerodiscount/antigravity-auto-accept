@@ -4,10 +4,27 @@
 [![Antigravity IDE](https://img.shields.io/badge/Antigravity%20IDE-v2.x-orange.svg)](https://antigravity.google)
 [![100% Free & Open Source](https://img.shields.io/badge/Paywalls-Zero-green.svg)](https://github.com/zerodiscount/antigravity-auto-accept)
 [![Platform](https://img.shields.io/badge/Platform-Desktop%20%7C%20Remote--SSH%20%7C%20Containers-purple.svg)](https://github.com/zerodiscount/antigravity-auto-accept)
+[![Release](https://img.shields.io/github/v/release/zerodiscount/antigravity-auto-accept?color=success)](https://github.com/zerodiscount/antigravity-auto-accept/releases/latest)
 
-**Antigravity AutoAccept** is a lightning-fast, zero-paywall extension for **Google Antigravity IDE** that automatically approves AI agent file diffs, terminal execution prompts, and tool actions—while strictly protecting human-in-the-loop **Plan reviews**.
+**Antigravity AutoAccept** is a lightning-fast, zero-paywall extension for **Google Antigravity IDE** that automatically approves routine AI agent file diffs, terminal execution prompts, and tool actions—while **strictly protecting human-in-the-loop Plan reviews**.
 
 Designed specifically for real developer workflows: works seamlessly on **local desktop**, **Remote-SSH**, **DevContainers**, **Docker**, and **headless server environments**.
+
+---
+
+## 🛡️ Safety Philosophy: What is Auto-Approved vs. What Stays Manual
+
+Our core philosophy is **zero friction for routine work, zero compromises on architectural safety**. You should never have to click "Accept" 50 times to apply minor code refactors, but an AI agent should **never** be allowed to approve its own architectural plan without your deliberate consent.
+
+| Category / Action | Default State | Behavior & Rationale |
+| :--- | :---: | :--- |
+| **Cascade Code Diffs ("Accept Changes")** | 🟢 **ON** | Routine file edits, code completions, and refactors across all open/visible editor tabs are accepted automatically without manual clicking. |
+| **Terminal Commands ("Run Command")** | 🟢 **ON** | Routine shell operations (`npm test`, `pytest`, `git status`, build scripts, compilation commands) run automatically without repeated permission prompts. |
+| **Tool Calls & Confirmations** | 🟢 **ON** | Standard tool executions, read/write permissions, and non-destructive notification popups ("Allow", "Yes", "Run") are approved automatically. |
+| **Architectural Plan Reviews ("Proceed", "Approve Plan")** | 🔴 **ALWAYS MANUAL** | **NEVER auto-clicked.** When an AI agent generates an architectural implementation plan, work breakdown, or phase strategy, the action button is strictly protected. You must review the plan and manually click **Proceed**. |
+| **User Review & Feedback Prompts** | 🔴 **ALWAYS MANUAL** | Interactive interview prompts, user decision dialogs, and feedback submission buttons (`"Review"`, `"Submit Feedback"`, `"Reject"`) are never bypassed. |
+| **Destructive Command Safety Blacklist** | 🔴 **BLOCKED** | Dangerous shell commands matching the configurable safety blacklist (e.g. `rm -rf /`, `mkfs`, `format`) are blocked from auto-approval. |
+| **Active Typing / Cursor Focus** | ⏸️ **PAUSED** | While you are typing or moving your cursor in any editor, automated accept loops are paused with a **1.5s grace window** so your focus is never stolen. |
 
 ---
 
@@ -22,7 +39,7 @@ Existing community extensions attempt to address this, but suffer from critical 
 3. **Phantom Command IDs**: Upstream extensions dispatch non-existent commands like `antigravity.agent.acceptAgentStep`, causing "Accept Changes" to silently fail or freeze.
 4. **No Safety Guardrails**: They either click blindly (potentially approving dangerous actions) or fail to distinguish routine file edits from architectural Plan reviews.
 
-### How Antigravity AutoAccept Fixes This
+### Comparison: Antigravity AutoAccept vs. Alternatives
 
 | Feature | Existing Paid / Clone Extensions | **Antigravity AutoAccept** |
 | :--- | :--- | :--- |
@@ -48,12 +65,12 @@ Existing community extensions attempt to address this, but suffer from critical 
 
 ## Installation
 
-### Method 1: Install from VSIX (Recommended)
+### Method 1: Install from VSIX (Quickest)
 
-1. Download the latest `antigravity-auto-accept.vsix` from [GitHub Releases](https://github.com/zerodiscount/antigravity-auto-accept/releases/latest).
+1. Download [`antigravity-auto-accept.vsix`](https://github.com/zerodiscount/antigravity-auto-accept/releases/download/v1.2.0/antigravity-auto-accept.vsix) from [GitHub Releases](https://github.com/zerodiscount/antigravity-auto-accept/releases/latest).
 2. In Antigravity IDE, press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS).
 3. Type **`Extensions: Install from VSIX...`** and select the downloaded file.
-4. Reload the IDE window when prompted.
+4. Reload the IDE window when prompted (`Developer: Reload Window`).
 
 ### Method 2: Build and Install from Source
 
