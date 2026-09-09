@@ -5,6 +5,7 @@
 [![100% Free & Open Source](https://img.shields.io/badge/Paywalls-Zero-green.svg)](https://github.com/zerodiscount/antigravity-auto-accept)
 [![Platform](https://img.shields.io/badge/Platform-Desktop%20%7C%20Remote--SSH%20%7C%20Containers-purple.svg)](https://github.com/zerodiscount/antigravity-auto-accept)
 [![Release](https://img.shields.io/github/v/release/zerodiscount/antigravity-auto-accept?color=success)](https://github.com/zerodiscount/antigravity-auto-accept/releases/latest)
+[![Open VSX](https://img.shields.io/open-vsx/v/zerodiscount/antigravity-auto-accept?color=blue)](https://open-vsx.org/extension/zerodiscount/antigravity-auto-accept)
 
 **Antigravity AutoAccept** is a lightning-fast, zero-paywall extension for **Google Antigravity IDE** that automatically approves routine AI agent file diffs, terminal execution prompts, and tool actions—while **strictly protecting human-in-the-loop Plan reviews**.
 
@@ -75,14 +76,28 @@ Existing community extensions attempt to address this, but suffer from critical 
 
 ## Installation
 
-### Method 1: Install from VSIX (Quickest)
+### Method 1: Install from Open-VSX Registry (Recommended)
+
+Install directly from within Antigravity IDE, VS Code, or VSCodium via the Extensions Marketplace:
+1. Open the Extensions view (`Ctrl+Shift+X` or `Cmd+Shift+X`).
+2. Search for **`Antigravity AutoAccept`** (or `zerodiscount.antigravity-auto-accept`).
+3. Click **Install**.
+
+Or install via terminal:
+```bash
+agy --install-extension zerodiscount.antigravity-auto-accept
+# or code / cursor:
+code --install-extension zerodiscount.antigravity-auto-accept
+```
+
+### Method 2: Install from VSIX Release Asset
 
 1. Download [`antigravity-auto-accept.vsix`](https://github.com/zerodiscount/antigravity-auto-accept/releases/download/v1.2.0/antigravity-auto-accept.vsix) from [GitHub Releases](https://github.com/zerodiscount/antigravity-auto-accept/releases/latest).
 2. In Antigravity IDE, press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS).
 3. Type **`Extensions: Install from VSIX...`** and select the downloaded file.
 4. Reload the IDE window when prompted (`Developer: Reload Window`).
 
-### Method 2: Build and Install from Source
+### Method 3: Build and Install from Source
 
 ```bash
 git clone https://github.com/zerodiscount/antigravity-auto-accept.git
@@ -98,7 +113,7 @@ Then install the generated `antigravity-auto-accept.vsix` into your IDE.
 
 - **Status Bar Toggle**: Look at the bottom-right status bar. Click **`$(check) Auto Accept: ON`** to toggle auto-acceptance on or pause it.
 - **Manual Sweep Hotkey**: Press **`Ctrl+Shift+Y`** (macOS: **`Cmd+Shift+Y`**) at any time to immediately accept all pending diffs across visible editors.
-- **Diagnostics**: Run **`Hygient AutoAccept: Run Diagnostics`** from the Command Palette to inspect active command hooks, settings, and health status.
+- **Diagnostics**: Run **`Antigravity AutoAccept: Run Diagnostics`** from the Command Palette to inspect active command hooks, settings, and health status.
 
 ---
 
@@ -146,6 +161,18 @@ Other extensions rely on Chrome DevTools Protocol connecting to `localhost:9222`
 
 ---
 
+## 🙏 Acknowledgements & Prior Art
+
+**Antigravity AutoAccept** was inspired by and builds upon the foundational concept created by [Kaushik Saravanan](https://github.com/kaushiksaravanan) in [Antigravity-AutoAccecpt](https://github.com/kaushiksaravanan/Antigravity-AutoAccecpt). We express our sincere appreciation to Kaushik for sharing his original idea with the open-source community.
+
+To serve demanding developer and enterprise multi-container environments, this project was completely refactored from the ground up:
+- **Zero Paywalls & Telemetry**: 100% free and open-source under MIT, with all RevenueCat paywalls and third-party tracking eliminated.
+- **Remote-SSH & Container Native**: Replaced localhost-only Chrome DevTools Protocol (CDP) hooks with native VS Code / Antigravity internal commands and Monaco diff sweeps, functioning seamlessly across remote SSH tunnels, DevContainers, and server instances.
+- **Protected Human-in-the-Loop Plans**: Hardcoded safety protections that strictly prevent AI agents from self-approving architectural plans, work breakdowns, or interview prompts.
+- **Typing Debounce & Focus Protection**: Pauses automated loops while you type to guarantee zero cursor disruption.
+
+---
+
 ## Contributing
 
 Contributions, bug reports, and feature requests are welcome!
@@ -156,3 +183,5 @@ Feel free to open an issue or submit a pull request on [GitHub](https://github.c
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+- Original work Copyright (c) 2026 Kaushik Saravanan.
+- Modifications and enhancements Copyright (c) 2026 ZeroDiscount Contributors.

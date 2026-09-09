@@ -72,7 +72,7 @@ export class UpdateManager implements vscode.Disposable {
 
             if (!remoteVersion) {
                 if (!silent) {
-                    vscode.window.showWarningMessage('Hygient AutoAccept: Could not read remote version from Forgejo.');
+                    vscode.window.showWarningMessage('Antigravity AutoAccept: Could not read remote version from Forgejo.');
                 }
                 return;
             }
@@ -88,14 +88,14 @@ export class UpdateManager implements vscode.Disposable {
                     this.updateStatusBarItem.hide();
                 }
                 if (!silent) {
-                    vscode.window.showInformationMessage(`Hygient AutoAccept is up to date (v${currentVersion}).`);
+                    vscode.window.showInformationMessage(`Antigravity AutoAccept is up to date (v${currentVersion}).`);
                 }
             }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
             this.output.appendLine(`[Updater] Update check failed: ${msg}`);
             if (!silent) {
-                vscode.window.showWarningMessage(`Hygient AutoAccept update check failed: ${msg}`);
+                vscode.window.showWarningMessage(`Antigravity AutoAccept update check failed: ${msg}`);
             }
         } finally {
             this.isChecking = false;
@@ -118,7 +118,7 @@ export class UpdateManager implements vscode.Disposable {
             this.updateStatusBarItem.command = 'autoAcceptAgent.checkForUpdates';
         }
         this.updateStatusBarItem.text = `$(cloud-download) AutoAccept: v${newVersion}`;
-        this.updateStatusBarItem.tooltip = `Hygient AutoAccept v${newVersion} is available. Click to update.`;
+        this.updateStatusBarItem.tooltip = `Antigravity AutoAccept v${newVersion} is available. Click to update.`;
         this.updateStatusBarItem.show();
 
         const config = vscode.workspace.getConfiguration('autoAcceptAgent');
@@ -129,7 +129,7 @@ export class UpdateManager implements vscode.Disposable {
             void this.downloadAndInstall(newVersion);
         } else {
             vscode.window.showInformationMessage(
-                `Hygient AutoAccept update available: v${newVersion}`,
+                `Antigravity AutoAccept update available: v${newVersion}`,
                 'Update Now',
                 'Later'
             ).then((selection) => {
@@ -143,7 +143,7 @@ export class UpdateManager implements vscode.Disposable {
     public async downloadAndInstall(newVersion: string): Promise<void> {
         return vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
-            title: `Hygient AutoAccept: Updating to v${newVersion}...`,
+            title: `Antigravity AutoAccept: Updating to v${newVersion}...`,
             cancellable: false
         }, async (progress) => {
             try {
@@ -174,7 +174,7 @@ export class UpdateManager implements vscode.Disposable {
                 }
 
                 const reloadAction = await vscode.window.showInformationMessage(
-                    `Hygient AutoAccept has been updated to v${newVersion}! Reload window to apply.`,
+                    `Antigravity AutoAccept has been updated to v${newVersion}! Reload window to apply.`,
                     'Reload Window',
                     'Later'
                 );
@@ -184,7 +184,7 @@ export class UpdateManager implements vscode.Disposable {
             } catch (err: unknown) {
                 const msg = err instanceof Error ? err.message : String(err);
                 this.output.appendLine(`[Updater] Install failed: ${msg}`);
-                vscode.window.showErrorMessage(`Hygient AutoAccept update failed: ${msg}`);
+                vscode.window.showErrorMessage(`Antigravity AutoAccept update failed: ${msg}`);
             }
         });
     }

@@ -8,8 +8,8 @@ let updater: UpdateManager | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
     try {
-        const output = vscode.window.createOutputChannel('Hygient AutoAccept');
-        output.appendLine('Hygient AutoAccept activated');
+        const output = vscode.window.createOutputChannel('Antigravity AutoAccept');
+        output.appendLine('Antigravity AutoAccept activated');
 
         const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
         statusBar.command = 'autoAcceptAgent.toggle';
@@ -23,7 +23,7 @@ export function activate(context: vscode.ExtensionContext): void {
                     await fn(); 
                 } catch (e) {
                     const msg = e instanceof Error ? e.message : String(e);
-                    vscode.window.showErrorMessage(`Hygient AutoAccept: ${msg}`);
+                    vscode.window.showErrorMessage(`Antigravity AutoAccept: ${msg}`);
                 }
             });
 

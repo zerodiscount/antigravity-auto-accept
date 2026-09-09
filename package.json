@@ -23,8 +23,7 @@
     "ai",
     "automation",
     "auto",
-    "accept",
-    "hygient"
+    "accept"
   ],
   "categories": [
     "Machine Learning",
@@ -39,27 +38,27 @@
     "commands": [
       {
         "command": "autoAcceptAgent.toggle",
-        "title": "Hygient AutoAccept: Toggle"
+        "title": "Antigravity AutoAccept: Toggle"
       },
       {
         "command": "autoAcceptAgent.start",
-        "title": "Hygient AutoAccept: Start"
+        "title": "Antigravity AutoAccept: Start"
       },
       {
         "command": "autoAcceptAgent.stop",
-        "title": "Hygient AutoAccept: Stop"
+        "title": "Antigravity AutoAccept: Stop"
       },
       {
         "command": "autoAcceptAgent.acceptNow",
-        "title": "Hygient AutoAccept: Accept All Pending Now"
+        "title": "Antigravity AutoAccept: Accept All Pending Now"
       },
       {
         "command": "autoAcceptAgent.diagnostics",
-        "title": "Hygient AutoAccept: Run Diagnostics"
+        "title": "Antigravity AutoAccept: Run Diagnostics"
       },
       {
         "command": "autoAcceptAgent.checkForUpdates",
-        "title": "Hygient AutoAccept: Check for Updates"
+        "title": "Antigravity AutoAccept: Check for Updates"
       }
     ],
     "keybindings": [
@@ -70,7 +69,7 @@
       }
     ],
     "configuration": {
-      "title": "Hygient AutoAccept",
+      "title": "Antigravity AutoAccept",
       "properties": {
         "autoAcceptAgent.enableCommandPolling": {
           "type": "boolean",
@@ -160,5 +159,9 @@
   "homepage": "https://github.com/zerodiscount/antigravity-auto-accept#readme",
   "bugs": {
     "url": "https://github.com/zerodiscount/antigravity-auto-accept/issues"
+  },
+  "author": {
+    "name": "ZeroDiscount Contributors",
+    "url": "https://github.com/zerodiscount/antigravity-auto-accept"
   }
 }

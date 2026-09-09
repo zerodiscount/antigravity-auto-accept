@@ -1,9 +1,14 @@
+/**
+ * Antigravity AutoAccept
+ * Originally based on Antigravity-AutoAccecpt by Kaushik Saravanan (https://github.com/kaushiksaravanan/Antigravity-AutoAccecpt)
+ * Re-architected and maintained by ZeroDiscount Contributors (MIT License)
+ */
 import * as vscode from 'vscode';
 import * as http from 'http';
 import WebSocket = require('ws');
 
 /**
- * Hygient AutoAccept for Antigravity
+ * Antigravity AutoAccept for Antigravity
  *
  * Strategy 1: Settings Injection — Configures VS Code & Antigravity settings
  *             to auto-approve routine tools/commands without asking.
@@ -138,7 +143,7 @@ export class AutoAcceptor implements vscode.Disposable {
         const config = vscode.workspace.getConfiguration('autoAcceptAgent');
         if (!config.get<boolean>('enableCommandPolling', true)) {
             this.log('polling disabled');
-            vscode.window.showWarningMessage('Hygient AutoAccept: Command polling disabled');
+            vscode.window.showWarningMessage('Antigravity AutoAccept: Command polling disabled');
             return;
         }
 
@@ -152,7 +157,7 @@ export class AutoAcceptor implements vscode.Disposable {
                 this.isRunning = false;
                 this.updateStatusBar('off');
                 this.log(`settings failed: ${msg}`);
-                vscode.window.showErrorMessage(`Hygient AutoAccept start failed: ${msg}`);
+                vscode.window.showErrorMessage(`Antigravity AutoAccept start failed: ${msg}`);
                 return;
             }
         }
@@ -162,8 +167,8 @@ export class AutoAcceptor implements vscode.Disposable {
         this.startCDPPolling();
 
         this.updateStatusBar('on');
-        vscode.window.showInformationMessage('Hygient AutoAccept: Running (Plan reviews remain manual)');
-        this.log('Hygient AutoAccept started.');
+        vscode.window.showInformationMessage('Antigravity AutoAccept: Running (Plan reviews remain manual)');
+        this.log('Antigravity AutoAccept started.');
     }
 
     public async stop(notifyUser = true): Promise<void> {
@@ -176,7 +181,7 @@ export class AutoAcceptor implements vscode.Disposable {
             this.disposeTracking();
             await this.restoreOriginalSettings();
             this.updateStatusBar('off');
-            if (notifyUser) vscode.window.showInformationMessage('Hygient AutoAccept: Stopped');
+            if (notifyUser) vscode.window.showInformationMessage('Antigravity AutoAccept: Stopped');
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
             this.log(`stop error: ${msg}`);
@@ -408,7 +413,7 @@ export class AutoAcceptor implements vscode.Disposable {
                             const regex = new RegExp(`(^|\\s|['"])${escapedBlocked}($|\\s|['"])`, 'i');
                             if (regex.test(commandLine)) {
                                 this.log(`🚨 BLOCKED dangerous command: "${commandLine}" (matched item in block list: "${blocked}")`);
-                                vscode.window.showWarningMessage(`Hygient AutoAccept: Blocked command "${blocked}"`);
+                                vscode.window.showWarningMessage(`Antigravity AutoAccept: Blocked command "${blocked}"`);
                                 return;
                             }
                         } catch (err) {
@@ -833,17 +838,17 @@ export class AutoAcceptor implements vscode.Disposable {
         try {
             switch (state) {
                 case 'on':
-                    this.statusBarItem.text = '$(zap) Hygient AutoAccept: ON';
+                    this.statusBarItem.text = '$(zap) Antigravity AutoAccept: ON';
                     this.statusBarItem.tooltip =
-                        `Hygient AutoAccept is ACTIVE\n` +
+                        `Antigravity AutoAccept is ACTIVE\n` +
                         `• Auto-accepts routine tool commands & diffs\n` +
                         `• Plan reviews ("Proceed", "Review") remain MANUAL\n` +
                         `Click to toggle.`;
                     this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.prominentBackground');
                     break;
                 case 'off':
-                    this.statusBarItem.text = '$(x) Hygient AutoAccept: OFF';
-                    this.statusBarItem.tooltip = 'Hygient AutoAccept is stopped. Click to start.';
+                    this.statusBarItem.text = '$(x) Antigravity AutoAccept: OFF';
+                    this.statusBarItem.tooltip = 'Antigravity AutoAccept is stopped. Click to start.';
                     this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
                     break;
             }
@@ -864,7 +869,7 @@ export class AutoAcceptor implements vscode.Disposable {
         try {
             const timestamp = new Date().toISOString();
             this.outputChannel?.appendLine(`[${timestamp}] ${message}`);
-            console.log(`[Hygient-AutoAccept] [${timestamp}] ${message}`);
+            console.log(`[Antigravity-AutoAccept] [${timestamp}] ${message}`);
         } catch { }
     }
 }
