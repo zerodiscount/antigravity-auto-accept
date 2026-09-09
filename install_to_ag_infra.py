@@ -5,7 +5,7 @@ import json
 import shutil
 import time
 
-vsix_path = "/home/antigravity/Workspace/Dev/Tools/hygient-antigravity-autoaccept/hygient-antigravity-autoaccept-1.1.0.vsix"
+vsix_path = "/home/antigravity/Workspace/Dev/Tools/hygient-antigravity-autoaccept/hygient-antigravity-autoaccept-1.2.0.vsix"
 servers = [
     "/home/antigravity/.antigravity-ide-server",
     "/home/antigravity/.antigravity-server",
@@ -16,7 +16,7 @@ for srv in servers:
     if not os.path.exists(ext_base):
         continue
     
-    dest_dir = os.path.join(ext_base, "hygient.hygient-antigravity-autoaccept-1.1.0-universal")
+    dest_dir = os.path.join(ext_base, "hygient.hygient-antigravity-autoaccept-1.2.0-universal")
     old_dest_dir = os.path.join(ext_base, "hygient.hygient-antigravity-autoaccept-1.0.0-universal")
     extensions_json_path = os.path.join(ext_base, "extensions.json")
     obsolete_json_path = os.path.join(ext_base, ".obsolete")
@@ -53,13 +53,13 @@ for srv in servers:
         "identifier": {
             "id": "hygient.hygient-antigravity-autoaccept"
         },
-        "version": "1.1.0",
+        "version": "1.2.0",
         "location": {
             "$mid": 1,
             "path": dest_dir,
             "scheme": "file"
         },
-        "relativeLocation": "hygient.hygient-antigravity-autoaccept-1.1.0-universal",
+        "relativeLocation": "hygient.hygient-antigravity-autoaccept-1.2.0-universal",
         "metadata": {
             "installedTimestamp": int(time.time() * 1000),
             "pinned": False,
@@ -93,7 +93,7 @@ for srv in servers:
             with open(obsolete_json_path, "r") as f:
                 obsolete = json.load(f)
             obsolete.pop("hygient.hygient-antigravity-autoaccept-1.0.0-universal", None)
-            obsolete.pop("hygient.hygient-antigravity-autoaccept-1.1.0-universal", None)
+            obsolete.pop("hygient.hygient-antigravity-autoaccept-1.2.0-universal", None)
             with open(obsolete_json_path, "w") as f:
                 json.dump(obsolete, f)
         except Exception as e:
@@ -123,4 +123,4 @@ for srv in servers:
             json.dump(settings, f, indent=4)
         print(f"Updated Machine settings at {settings_path}")
 
-print("Successfully deployed Hygient AutoAccept v1.1.0 locally in ag-infra!")
+print("Successfully deployed Hygient AutoAccept v1.2.0 locally in ag-infra!")

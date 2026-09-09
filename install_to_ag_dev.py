@@ -5,8 +5,8 @@ import json
 import shutil
 import time
 
-vsix_path = "/mnt/dev_ai_core/workspace/Dev/Tools/hygient-antigravity-autoaccept/hygient-antigravity-autoaccept-1.1.0.vsix"
-dest_dir = "/home/frappe/.antigravity-ide-server/extensions/hygient.hygient-antigravity-autoaccept-1.1.0-universal"
+vsix_path = "/mnt/dev_ai_core/workspace/Dev/Tools/hygient-antigravity-autoaccept/hygient-antigravity-autoaccept-1.2.0.vsix"
+dest_dir = "/home/frappe/.antigravity-ide-server/extensions/hygient.hygient-antigravity-autoaccept-1.2.0-universal"
 extensions_json_path = "/home/frappe/.antigravity-ide-server/extensions/extensions.json"
 obsolete_json_path = "/home/frappe/.antigravity-ide-server/extensions/.obsolete"
 
@@ -40,13 +40,13 @@ ext_entry = {
     "identifier": {
         "id": "hygient.hygient-antigravity-autoaccept"
     },
-    "version": "1.1.0",
+    "version": "1.2.0",
     "location": {
         "$mid": 1,
         "path": dest_dir,
         "scheme": "file"
     },
-    "relativeLocation": "hygient.hygient-antigravity-autoaccept-1.1.0-universal",
+    "relativeLocation": "hygient.hygient-antigravity-autoaccept-1.2.0-universal",
     "metadata": {
         "installedTimestamp": int(time.time() * 1000),
         "pinned": False,
@@ -77,7 +77,7 @@ if os.path.exists(obsolete_json_path):
         with open(obsolete_json_path, "r") as f:
             obsolete = json.load(f)
         obsolete.pop("hygient.hygient-antigravity-autoaccept-1.0.0-universal", None)
-        obsolete.pop("hygient.hygient-antigravity-autoaccept-1.1.0-universal", None)
+        obsolete.pop("hygient.hygient-antigravity-autoaccept-1.2.0-universal", None)
         with open(obsolete_json_path, "w") as f:
             json.dump(obsolete, f)
     except Exception as e:
@@ -92,4 +92,4 @@ for root, dirs, files in os.walk(dest_dir):
         shutil.chown(os.path.join(root, f), user="frappe", group="frappe")
 shutil.chown(extensions_json_path, user="frappe", group="frappe")
 
-print("Successfully installed Hygient AutoAccept v1.1.0 on ag-dev!")
+print("Successfully installed Hygient AutoAccept v1.2.0 on ag-dev!")

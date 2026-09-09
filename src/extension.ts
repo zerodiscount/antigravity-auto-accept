@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import { AutoAcceptor } from './autoAcceptor';
 import { runDiagnostics } from './diagnostics';
+import { UpdateManager } from './updater';
 
 let acceptor: AutoAcceptor | undefined;
+let updater: UpdateManager | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
     try {
@@ -13,6 +15,7 @@ export function activate(context: vscode.ExtensionContext): void {
         statusBar.command = 'autoAcceptAgent.toggle';
 
         acceptor = new AutoAcceptor(statusBar, output, context);
+        updater = new UpdateManager(context, output);
 
         const cmd = (id: string, fn: () => Promise<void>) =>
             vscode.commands.registerCommand(id, async () => {
@@ -29,7 +32,11 @@ export function activate(context: vscode.ExtensionContext): void {
             cmd('autoAcceptAgent.start', () => acceptor!.start()),
             cmd('autoAcceptAgent.stop', () => acceptor!.stop()),
             cmd('autoAcceptAgent.diagnostics', () => runDiagnostics(output)),
+            cmd('autoAcceptAgent.checkForUpdates', () => updater!.checkForUpdates(false)),
             cmd('autoAcceptAgent.acceptNow', async () => {
+                for (const editor of vscode.window.visibleTextEditors) {
+                    try { await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', editor.document.uri); } catch { }
+                }
                 const cmds = [
                     'antigravity.prioritized.agentAcceptAllInFile',
                     'antigravity.closeAllDiffZones',
@@ -49,10 +56,12 @@ export function activate(context: vscode.ExtensionContext): void {
                     try { await vscode.commands.executeCommand(c); } catch { }
                 }
             }),
-            acceptor
+            acceptor,
+            updater
         );
 
         acceptor.start().catch(() => { });
+        updater.start();
 
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -62,4 +71,5 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export async function deactivate(): Promise<void> {
     acceptor = undefined;
+    updater = undefined;
 }

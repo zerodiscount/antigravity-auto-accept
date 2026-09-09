@@ -343,6 +343,14 @@ export class AutoAcceptor implements vscode.Disposable {
         if (this.isUserInteracting()) { return; }
         const interceptNotifications = this.shouldInterceptNotifications();
 
+        // Target all visible text editors for Antigravity diff acceptance
+        for (const editor of vscode.window.visibleTextEditors) {
+            if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
+            try {
+                await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', editor.document.uri);
+            } catch { }
+        }
+
         for (const cmd of this.criticalAcceptCommands) {
             if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
             if (!interceptNotifications && cmd.toLowerCase().includes('notification')) { continue; }
