@@ -1,13 +1,13 @@
 {
-  "name": "hygient-antigravity-autoaccept",
-  "displayName": "Hygient AutoAccept for Antigravity",
-  "description": "Automatically accept AI agent actions (file edits, terminal commands, tool executions) in Antigravity IDE while preserving manual Plan reviews",
+  "name": "antigravity-auto-accept",
+  "displayName": "Antigravity AutoAccept",
+  "description": "Zero-friction, free, and open-source auto-acceptance for AI agent edits, diffs, and terminal commands in Google Antigravity. Built for local desktop & Remote-SSH with Plan review safety.",
   "version": "1.2.0",
   "icon": "icon.png",
-  "publisher": "Hygient",
+  "publisher": "zerodiscount",
   "repository": {
     "type": "git",
-    "url": "ssh://git@10.2.100.120:2222/aurametrics/hygient-antigravity-autoaccept.git"
+    "url": "https://github.com/zerodiscount/antigravity-auto-accept.git"
   },
   "engines": {
     "vscode": "^1.90.0"
@@ -143,7 +143,7 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "package": "vsce package -o hygient-antigravity-autoaccept.vsix --baseContentUrl http://10.2.200.120:3000/AuraMetrics/hygient-antigravity-autoaccept/raw/branch/master --baseImagesUrl http://10.2.200.120:3000/AuraMetrics/hygient-antigravity-autoaccept/raw/branch/master --allow-missing-repository",
+    "package": "vsce package -o antigravity-auto-accept.vsix --allow-missing-repository",
     "publish": "vsce publish"
   },
   "devDependencies": {
@@ -155,5 +155,10 @@
   },
   "dependencies": {
     "ws": "^8.19.0"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/zerodiscount/antigravity-auto-accept#readme",
+  "bugs": {
+    "url": "https://github.com/zerodiscount/antigravity-auto-accept/issues"
   }
 }
