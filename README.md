@@ -12,6 +12,16 @@ Designed specifically for real developer workflows: works seamlessly on **local 
 
 ---
 
+## 💡 Origin & Philosophy: The Best of Both Worlds
+
+> *"Personally, I reached a point where Antigravity / Gemini was consistently writing cleaner, more idiomatic code than I could produce manually line-by-line. Reviewing every individual 5-line diff or boilerplate import became redundant and disrupted my development flow.*
+>
+> *At the same time, I didn't want a detached black-box tool. I love using the IDE—the granular control over workspaces, split editors, file trees, and terminal tabs is irreplaceable.*
+>
+> *I built this extension to bridge that gap: bringing the autonomous velocity of Antigravity 2.0 directly into the rich IDE environment. Let the AI write and apply routine code changes seamlessly, while you retain executive control over what truly matters: architectural plans, system strategy, and high-level decisions."*
+
+---
+
 ## 🛡️ Safety Philosophy: What is Auto-Approved vs. What Stays Manual
 
 Our core philosophy is **zero friction for routine work, zero compromises on architectural safety**. You should never have to click "Accept" 50 times to apply minor code refactors, but an AI agent should **never** be allowed to approve its own architectural plan without your deliberate consent.
