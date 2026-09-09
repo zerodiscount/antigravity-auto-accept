@@ -76,9 +76,7 @@ export class AutoAcceptor implements vscode.Disposable {
         'workbench.action.chat.accept',
 
         // Notification acceptance (catches "Allow", "Run", "Yes" popups)
-        'notification.acceptPrimaryAction',
-        'notifications.acceptPrimaryAction',
-    ];
+                    ];
 
     private readonly secondaryAcceptCommands: string[] = [
         // VS Code built-in chat / editing
@@ -509,8 +507,7 @@ export class AutoAcceptor implements vscode.Disposable {
                                 'antigravity.terminalCommand.accept',
                                 'antigravity.terminalCommand.run',
                                 'workbench.action.terminal.chat.runCommand',
-                                'notification.acceptPrimaryAction',
-                            ];
+                                                            ];
                             for (const cmd of cmds) {
                                 if (!interceptNotifications && cmd.toLowerCase().includes('notification')) { continue; }
                                 try {

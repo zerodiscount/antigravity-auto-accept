@@ -18,21 +18,9 @@ export class UpdateManager implements vscode.Disposable {
     }
 
     public start(): void {
-        const config = vscode.workspace.getConfiguration('autoAcceptAgent');
-        if (!config.get<boolean>('checkForUpdates', true)) {
-            this.output.appendLine('[Updater] Update checking is disabled in settings.');
-            return;
-        }
-
-        // Run initial check after 5 seconds
-        setTimeout(() => {
-            void this.checkForUpdates(true);
-        }, 5000);
-
-        // Periodically check every 2 hours
-        this.timer = setInterval(() => {
-            void this.checkForUpdates(true);
-        }, 2 * 60 * 60 * 1000);
+        // Automatic update checking is completely disabled to prevent boot loops and unexpected popups.
+        this.output.appendLine('[Updater] Automatic update polling is disabled.');
+        return;
     }
 
     public stop(): void {
@@ -60,7 +48,17 @@ export class UpdateManager implements vscode.Disposable {
         this.isChecking = true;
 
         try {
-            const currentVersion = this.context.extension?.packageJSON?.version || '1.1.0';
+            let currentVersion = this.context.extension?.packageJSON?.version;
+            if (!currentVersion) {
+                try {
+                    const localPkgPath = path.join(this.context.extensionPath, 'package.json');
+                    if (fs.existsSync(localPkgPath)) {
+                        const parsed = JSON.parse(fs.readFileSync(localPkgPath, 'utf-8'));
+                        currentVersion = parsed.version;
+                    }
+                } catch { }
+            }
+            currentVersion = currentVersion || '1.2.2';
             const serverUrl = this.getServerUrl();
             const packageJsonUrl = `${serverUrl}/api/v1/repos/AuraMetrics/hygient-antigravity-autoaccept/raw/master/package.json`;
 
@@ -121,23 +119,16 @@ export class UpdateManager implements vscode.Disposable {
         this.updateStatusBarItem.tooltip = `Antigravity AutoAccept v${newVersion} is available. Click to update.`;
         this.updateStatusBarItem.show();
 
-        const config = vscode.workspace.getConfiguration('autoAcceptAgent');
-        const autoUpdate = config.get<boolean>('autoUpdate', true);
-
-        if (autoUpdate) {
-            this.output.appendLine(`[Updater] autoUpdate is true. Automatically downloading v${newVersion}...`);
-            void this.downloadAndInstall(newVersion);
-        } else {
-            vscode.window.showInformationMessage(
-                `Antigravity AutoAccept update available: v${newVersion}`,
-                'Update Now',
-                'Later'
-            ).then((selection) => {
-                if (selection === 'Update Now') {
-                    void this.downloadAndInstall(newVersion);
-                }
-            });
-        }
+        // Manual prompt only - never auto-download without user confirmation
+        vscode.window.showInformationMessage(
+            `Antigravity AutoAccept update available: v${newVersion}`,
+            'Update Now',
+            'Later'
+        ).then((selection) => {
+            if (selection === 'Update Now') {
+                void this.downloadAndInstall(newVersion);
+            }
+        });
     }
 
     public async downloadAndInstall(newVersion: string): Promise<void> {

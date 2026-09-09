@@ -2,7 +2,7 @@
   "name": "antigravity-auto-accept",
   "displayName": "Antigravity AutoAccept",
   "description": "Zero-friction, free, and open-source auto-acceptance for AI agent edits, diffs, and terminal commands in Google Antigravity. Built for local desktop & Remote-SSH with Plan review safety.",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "icon": "icon.png",
   "publisher": "zerodiscount",
   "repository": {
@@ -90,7 +90,7 @@
         },
         "autoAcceptAgent.interceptNotifications": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Automatically accept primary actions on approval notifications (Run, Allow, Yes)."
         },
         "autoAcceptAgent.enableCDP": {
@@ -122,12 +122,12 @@
         },
         "autoAcceptAgent.checkForUpdates": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Periodically check for extension updates from internal Forgejo Git server."
         },
         "autoAcceptAgent.autoUpdate": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Automatically download and install updates from internal Forgejo server when available."
         },
         "autoAcceptAgent.updateServerUrl": {

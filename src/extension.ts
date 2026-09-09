@@ -48,9 +48,7 @@ export function activate(context: vscode.ExtensionContext): void {
                     'inlineChat.acceptChanges',
                     'chat.action.acceptTool',
                     'workbench.action.chat.accept',
-                    'notification.acceptPrimaryAction',
-                    'notifications.acceptPrimaryAction',
-                    'workbench.action.terminal.chat.runCommand',
+                                                            'workbench.action.terminal.chat.runCommand',
                 ];
                 for (const c of cmds) {
                     try { await vscode.commands.executeCommand(c); } catch { }
@@ -61,11 +59,11 @@ export function activate(context: vscode.ExtensionContext): void {
         );
 
         acceptor.start().catch(() => { });
-        updater.start();
+        // updater.start(); -- auto-update disabled to prevent boot loops
 
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        vscode.window.showErrorMessage(`Hygient AutoAccept activation failed: ${msg}`);
+        vscode.window.showErrorMessage(`Antigravity AutoAccept activation failed: ${msg}`);
     }
 }
 
