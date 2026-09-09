@@ -6,6 +6,20 @@ All settings are optional. Auto Accept works out of the box with sensible defaul
 
 Open **Settings** (Cmd+, / Ctrl+,) and search for `autoAcceptAgent`.
 
+### `autoCloseAcceptedEditors`
+- **Type:** `boolean`
+- **Default:** `true`
+- **Description:** Automatically close editor tabs that were opened by AI agents once changes are accepted and saved.
+
+Keeps your editor tab bar clean during long coding runs. Files you opened yourself or pinned are strictly preserved.
+
+### `autoCloseDelayMs`
+- **Type:** `integer`
+- **Default:** `600`
+- **Min:** `200`
+- **Max:** `5000`
+- **Description:** Delay in milliseconds before closing an accepted tab to ensure background saves settle.
+
 ### `enableCommandPolling`
 - **Type:** `boolean`
 - **Default:** `true`

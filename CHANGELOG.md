@@ -2,6 +2,15 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.7] - 2026-09-09
+
+### Added & Enhanced
+- **Smart AutoClose (`autoAcceptAgent.autoCloseAcceptedEditors`)**: Enabled by default (`true`). Automatically sweeps and closes editor tabs that were opened by AI agents after changes are accepted and saved.
+- **Whitelist Protection (`userOpenedUris`)**: Files opened or interacted with by the user (mouse clicks, typing, navigation) are whitelisted and NEVER auto-closed.
+- **Zero Data Loss Guarantee**: Tabs with unsaved changes (`tab.isDirty === true`) or pinned status (`tab.isPinned === true`) are strictly preserved.
+- **Configurable Debounce Delay (`autoAcceptAgent.autoCloseDelayMs`)**: Default `600ms` debounce allows Monaco diff widgets to unmount and auto-save flushes to complete before closing tabs.
+- **Branding Update**: Display name updated to **Antigravity AutoAcceptClose** to reflect automated diff acceptance and intelligent tab hygiene.
+
 ## [1.2.6] - 2026-09-09
 
 ### Fixed & Refactored

@@ -50,6 +50,11 @@ export class AutoAcceptor implements vscode.Disposable {
         value: unknown;
     }>();
 
+    // AutoClose Tracking State
+    private readonly userOpenedUris = new Set<string>();
+    private readonly agentOpenedUris = new Set<string>();
+    private readonly pendingCloseTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
     private isUserInteracting(): boolean {
         return (Date.now() - this.lastUserInteractionTime) < this.USER_INTERACTION_GRACE_MS;
     }
@@ -151,6 +156,7 @@ export class AutoAcceptor implements vscode.Disposable {
             }
         }
 
+        this.seedOpenTabs();
         this.startCommandPolling();
         this.setupEventTracking();
         this.startCDPPolling();
@@ -165,6 +171,7 @@ export class AutoAcceptor implements vscode.Disposable {
         try {
             this.log('stopping');
             this.isRunning = false;
+            this.clearPendingCloses();
             this.stopAllPolling();
             this.disposeTracking();
             await this.restoreOriginalSettings();
@@ -183,6 +190,7 @@ export class AutoAcceptor implements vscode.Disposable {
         this.isDisposed = true;
         this.isRunning = false;
 
+        try { this.clearPendingCloses(); } catch { }
         try { this.stopAllPolling(); } catch { }
         try { this.disposeTracking(); } catch { }
 
@@ -290,6 +298,113 @@ export class AutoAcceptor implements vscode.Disposable {
         this.log(`Settings restore complete: ${restored} restored, ${unchanged} unchanged, ${failed} failed.`);
     }
 
+    // ── AutoClose Helpers ─────────────────────────────────
+
+    private getTabUri(tab: vscode.Tab): vscode.Uri | undefined {
+        if (!tab || !tab.input) { return undefined; }
+        if (tab.input instanceof vscode.TabInputText) {
+            return tab.input.uri;
+        }
+        if (tab.input instanceof vscode.TabInputTextDiff) {
+            return tab.input.modified;
+        }
+        const inputAny = tab.input as { uri?: vscode.Uri; modified?: vscode.Uri };
+        return inputAny?.uri || inputAny?.modified;
+    }
+
+    private seedOpenTabs(): void {
+        this.userOpenedUris.clear();
+        try {
+            for (const group of vscode.window.tabGroups.all) {
+                for (const tab of group.tabs) {
+                    const uri = this.getTabUri(tab);
+                    if (uri) {
+                        this.userOpenedUris.add(uri.toString());
+                    }
+                }
+            }
+        } catch { }
+    }
+
+    private cancelPendingClose(uriStr: string): void {
+        const timer = this.pendingCloseTimers.get(uriStr);
+        if (timer) {
+            clearTimeout(timer);
+            this.pendingCloseTimers.delete(uriStr);
+        }
+    }
+
+    private clearPendingCloses(): void {
+        for (const timer of this.pendingCloseTimers.values()) {
+            clearTimeout(timer);
+        }
+        this.pendingCloseTimers.clear();
+        this.userOpenedUris.clear();
+        this.agentOpenedUris.clear();
+    }
+
+    private scheduleAutoClose(uri: vscode.Uri): void {
+        const config = vscode.workspace.getConfiguration('autoAcceptAgent');
+        if (!config.get<boolean>('autoCloseAcceptedEditors', true)) {
+            return;
+        }
+
+        const uriStr = uri.toString();
+        if (this.userOpenedUris.has(uriStr)) {
+            return;
+        }
+        if (!this.agentOpenedUris.has(uriStr)) {
+            return;
+        }
+
+        this.cancelPendingClose(uriStr);
+
+        const delayMs = config.get<number>('autoCloseDelayMs', 600);
+        const timer = setTimeout(() => {
+            void this.executeAutoClose(uri).catch(() => {});
+        }, delayMs);
+
+        this.pendingCloseTimers.set(uriStr, timer);
+    }
+
+    private async executeAutoClose(uri: vscode.Uri): Promise<void> {
+        const uriStr = uri.toString();
+        this.pendingCloseTimers.delete(uriStr);
+
+        if (!this.isRunning || this.isDisposed || this.isUserInteracting()) {
+            return;
+        }
+        if (this.userOpenedUris.has(uriStr)) {
+            return;
+        }
+
+        try {
+            const tabsToClose: vscode.Tab[] = [];
+            for (const group of vscode.window.tabGroups.all) {
+                for (const tab of group.tabs) {
+                    const tabUri = this.getTabUri(tab);
+                    if (tabUri && tabUri.toString() === uriStr) {
+                        // Safety: NEVER close dirty or pinned tabs
+                        if (tab.isDirty || tab.isPinned) {
+                            return;
+                        }
+                        tabsToClose.push(tab);
+                    }
+                }
+            }
+
+            if (tabsToClose.length > 0) {
+                await vscode.window.tabGroups.close(tabsToClose, true);
+                this.agentOpenedUris.delete(uriStr);
+                const fileName = uri.path.split('/').pop() || uri.fsPath;
+                this.log(`Auto-closed accepted editor: ${fileName}`);
+            }
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            this.log(`Auto-close error for ${uri.path}: ${msg}`);
+        }
+    }
+
     // ── Strategy 2: Command Polling ───────────────────────
 
     private startCommandPolling(): void {
@@ -339,8 +454,16 @@ export class AutoAcceptor implements vscode.Disposable {
         // Target all visible text editors for Antigravity diff acceptance
         for (const editor of vscode.window.visibleTextEditors) {
             if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
+            const uri = editor.document.uri;
+            const uriStr = uri.toString();
+            if (!this.userOpenedUris.has(uriStr)) {
+                this.agentOpenedUris.add(uriStr);
+            }
             try {
-                await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', editor.document.uri);
+                await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
+                if (this.agentOpenedUris.has(uriStr) && !this.userOpenedUris.has(uriStr)) {
+                    this.scheduleAutoClose(uri);
+                }
             } catch { }
         }
 
@@ -425,6 +548,10 @@ export class AutoAcceptor implements vscode.Disposable {
             vscode.window.onDidChangeTextEditorSelection((e) => {
                 if (e.kind === vscode.TextEditorSelectionChangeKind.Keyboard || e.kind === vscode.TextEditorSelectionChangeKind.Mouse) {
                     this.lastUserInteractionTime = Date.now();
+                    const uriStr = e.textEditor.document.uri.toString();
+                    this.userOpenedUris.add(uriStr);
+                    this.agentOpenedUris.delete(uriStr);
+                    this.cancelPendingClose(uriStr);
                 }
             })
         );
@@ -439,8 +566,14 @@ export class AutoAcceptor implements vscode.Disposable {
         );
 
         this.trackingDisposables.push(
-            vscode.window.onDidChangeActiveTextEditor(async () => {
+            vscode.window.onDidChangeActiveTextEditor(async (editor) => {
                 if (this.isRunning && !this.isDisposed) {
+                    if (editor && this.isUserInteracting()) {
+                        const uriStr = editor.document.uri.toString();
+                        this.userOpenedUris.add(uriStr);
+                        this.agentOpenedUris.delete(uriStr);
+                        this.cancelPendingClose(uriStr);
+                    }
                     if (this.isUserInteracting()) { return; }
                     setTimeout(() => {
                         void (async () => {
@@ -477,6 +610,12 @@ export class AutoAcceptor implements vscode.Disposable {
                                 try {
                                     await vscode.commands.executeCommand(cmd);
                                 } catch { }
+                            }
+                            for (const ed of vscode.window.visibleTextEditors) {
+                                const uStr = ed.document.uri.toString();
+                                if (this.agentOpenedUris.has(uStr) && !this.userOpenedUris.has(uStr)) {
+                                    this.scheduleAutoClose(ed.document.uri);
+                                }
                             }
                         })().catch(() => { });
                     }, 350);
@@ -833,6 +972,7 @@ export class AutoAcceptor implements vscode.Disposable {
                     this.statusBarItem.tooltip =
                         `Antigravity AutoAccept is ACTIVE\n` +
                         `• Auto-accepts routine tool commands & diffs\n` +
+                        `• Auto-closes accepted agent files (preserves user & pinned tabs)\n` +
                         `• Plan reviews ("Proceed", "Review") remain MANUAL\n` +
                         `Click to toggle.`;
                     this.statusBarItem.backgroundColor = undefined;

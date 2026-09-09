@@ -1,4 +1,4 @@
-# Antigravity AutoAccept 🚀
+# Antigravity AutoAcceptClose 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Antigravity IDE](https://img.shields.io/badge/Antigravity%20IDE-v2.x-orange.svg)](https://antigravity.google)
@@ -7,7 +7,7 @@
 [![Release](https://img.shields.io/github/v/release/zerodiscount/antigravity-auto-accept?color=success)](https://github.com/zerodiscount/antigravity-auto-accept/releases/latest)
 [![Open VSX](https://img.shields.io/open-vsx/v/zerodiscount/antigravity-auto-accept?color=blue)](https://open-vsx.org/extension/zerodiscount/antigravity-auto-accept)
 
-**Antigravity AutoAccept** is a lightning-fast, zero-paywall extension for **Google Antigravity IDE** that automatically approves routine AI agent file diffs, terminal execution prompts, and tool actions—while **strictly protecting human-in-the-loop Plan reviews**.
+**Antigravity AutoAcceptClose** is a lightning-fast, zero-paywall extension for **Google Antigravity IDE** that automatically approves routine AI agent file diffs, terminal execution prompts, and tool actions, and **intelligently auto-closes agent-opened files after acceptance**—while **strictly protecting human-in-the-loop Plan reviews and user files**.
 
 Designed specifically for real developer workflows: works seamlessly on **local desktop**, **Remote-SSH**, **DevContainers**, **Docker**, and **headless server environments**.
 
@@ -35,6 +35,7 @@ Our core philosophy is **zero friction for routine work, zero compromises on arc
 | **Architectural Plan Reviews ("Proceed", "Approve Plan")** | 🔴 **ALWAYS MANUAL** | **NEVER auto-clicked.** When an AI agent generates an architectural implementation plan, work breakdown, or phase strategy, the action button is strictly protected. You must review the plan and manually click **Proceed**. |
 | **User Review & Feedback Prompts** | 🔴 **ALWAYS MANUAL** | Interactive interview prompts, user decision dialogs, and feedback submission buttons (`"Review"`, `"Submit Feedback"`, `"Reject"`) are never bypassed. |
 | **Destructive Command Safety Blacklist** | 🔴 **BLOCKED** | Dangerous shell commands matching the configurable safety blacklist (e.g. `rm -rf /`, `mkfs`, `format`) are blocked from auto-approval. |
+| **Agent-Opened File Tabs (AutoClose)** | 🟢 **ON (AutoClose)** | Automatically closes editor tabs opened by the agent once diffs are accepted and saved. Leaves user-opened, active, or pinned files untouched. |
 | **Active Typing / Cursor Focus** | ⏸️ **PAUSED** | While you are typing or moving your cursor in any editor, automated accept loops are paused with a **1.5s grace window** so your focus is never stolen. |
 
 ---
@@ -65,6 +66,7 @@ Existing community extensions attempt to address this, but suffer from critical 
 
 ## Key Features
 
+- 🚪 **Intelligent AutoClose for Agent Files**: Automatically sweeps and closes file tabs opened during autonomous AI agent coding runs once changes are accepted and saved to disk. User-opened files and pinned tabs are whitelisted and never closed.
 - ⚡ **True Native Command Integration**: Directly interfaces with Antigravity's internal command registry (`antigravity.prioritized.agentAcceptAllInFile`, `antigravity.closeAllDiffZones`, `antigravity.prioritized.agentAcceptFocusedHunk`, `antigravity.prioritized.submitCodeAcknowledgement`, `inlineChat.acceptChanges`, `chat.action.acceptTool`).
 - 🌐 **Remote-SSH & Container Native**: Operates via VS Code's Extension Host API. Works identically whether you are on your local laptop, an SSH remote server, or an LXC/Docker container.
 - 🛡️ **Plan Review Safety Gate**: Human-in-the-loop decisions should remain human. Buttons like `"Proceed"`, `"Approve Plan"`, `"Review"`, `"Submit Feedback"`, and `"Reject"` are strictly excluded from auto-approval.
@@ -123,6 +125,12 @@ Customize behavior in your `settings.json` or through the IDE Settings UI:
 
 ```jsonc
 {
+  // Automatically close agent-opened editor tabs after acceptance (default: true)
+  "autoAcceptAgent.autoCloseAcceptedEditors": true,
+
+  // Debounce delay in ms before closing accepted editor tabs (default: 600)
+  "autoAcceptAgent.autoCloseDelayMs": 600,
+
   // Enable routine command polling (default: true)
   "autoAcceptAgent.enableCommandPolling": true,
 
