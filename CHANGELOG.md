@@ -2,6 +2,21 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.1] - 2026-09-09
+
+### Fixed
+- Fixed typing debounce false-positive: AI agent stream document edits are no longer mistaken for human keyboard typing.
+- Expanded automated diff sweeps to all open `workspace.textDocuments`, ensuring background files not in active editor split panes are accepted.
+
+## [1.2.0] - 2026-09-09
+
+### Added
+- Initial public release on Open-VSX under the `zerodiscount` namespace.
+- Hardcoded Plan review safety gate (protects "Proceed", "Approve Plan", "Review", "Submit Feedback").
+- Smart typing debounce (1.5s grace window for keyboard activity).
+- Remote-SSH and DevContainer native Extension Host integration.
+- Full MIT License attribution to original author Kaushik Saravanan.
+
 ## [0.7.7] - 2026-08-26
 
 ### Changed
