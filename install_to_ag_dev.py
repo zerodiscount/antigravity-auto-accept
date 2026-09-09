@@ -6,7 +6,7 @@ import shutil
 import time
 import glob
 
-version = "1.2.3"
+version = json.load(open("/mnt/dev_ai_core/workspace/Dev/Tools/hygient-antigravity-autoaccept/package.json"))["version"]
 vsix_path = "/mnt/dev_ai_core/workspace/Dev/Tools/hygient-antigravity-autoaccept/antigravity-auto-accept.vsix"
 ext_base = "/home/frappe/.antigravity-ide-server/extensions"
 dest_dir = os.path.join(ext_base, f"hygient.hygient-antigravity-autoaccept-{version}-universal")

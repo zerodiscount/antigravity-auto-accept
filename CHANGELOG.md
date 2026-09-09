@@ -2,6 +2,14 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.5] - 2026-09-09
+
+### Fixed
+- **Completely Silent Activation**: Removed all activation, startup, and stop popup notification toasts.
+- **Status Bar Quiet Mode**: Removed prominent warning badge styling (`statusBarItem.prominentBackground` / `errorBackground`), displaying clean standard text `$(check) AutoAccept`.
+- **Clean Configuration**: Removed unregistered and intrusive settings (`terminal.integrated.confirmOnKill`, `security.workspace.trust.enabled`, etc.) to prevent workspace security trust warnings in the IDE.
+- **Status Bar Toggle Setting**: Added `autoAcceptAgent.showStatusBarItem` configuration setting (default `true`), allowing users to hide the status bar indicator entirely if desired.
+
 ## [1.2.3] - 2026-09-09
 
 ### Removed

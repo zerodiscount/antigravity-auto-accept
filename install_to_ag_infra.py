@@ -6,7 +6,7 @@ import shutil
 import time
 import glob
 
-version = "1.2.3"
+version = json.load(open("/mnt/dev_ai_core/workspace/Dev/Tools/hygient-antigravity-autoaccept/package.json"))["version"]
 vsix_path = "/home/antigravity/Workspace/Dev/Tools/hygient-antigravity-autoaccept/antigravity-auto-accept.vsix"
 
 # 1. Local ag-infra deployment

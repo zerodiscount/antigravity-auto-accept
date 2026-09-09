@@ -91,10 +91,8 @@ export class AutoAcceptor implements vscode.Disposable {
      * Settings to auto-configure so routine actions don't prompt for permission.
      */
     private readonly autoApproveSettings: Array<[string, string, unknown]> = [
-        ['chat.tools', 'autoApprove', true],
         ['chat.tools.global', 'autoApprove', true],
         ['chat.tools.edits', 'autoApprove', true],
-        ['chat.tools', 'autoApprove.edits', true],
         ['chat.tools.terminal', 'enableAutoApprove', true],
         ['chat.tools.terminal', 'autoApprove', true],
         ['chat.tools.urls', 'autoApprove', true],
@@ -105,9 +103,7 @@ export class AutoAcceptor implements vscode.Disposable {
         ['chat.tools.multi_replace_file_content', 'autoApprove', true],
         ['chat.agent', 'autoApprove', true],
         ['chat.agent', 'maxRequests', 999],
-        ['terminal.integrated', 'confirmOnKill', 'never'],
-        ['terminal.integrated', 'confirmOnPaste', false],
-        ['security.workspace.trust', 'enabled', false],
+
     ];
 
     private context: vscode.ExtensionContext;
@@ -141,7 +137,6 @@ export class AutoAcceptor implements vscode.Disposable {
         const config = vscode.workspace.getConfiguration('autoAcceptAgent');
         if (!config.get<boolean>('enableCommandPolling', true)) {
             this.log('polling disabled');
-            vscode.window.showWarningMessage('Antigravity AutoAccept: Command polling disabled');
             return;
         }
 
@@ -165,7 +160,6 @@ export class AutoAcceptor implements vscode.Disposable {
         this.startCDPPolling();
 
         this.updateStatusBar('on');
-        vscode.window.showInformationMessage('Antigravity AutoAccept: Running (Plan reviews remain manual)');
         this.log('Antigravity AutoAccept started.');
     }
 
@@ -179,7 +173,7 @@ export class AutoAcceptor implements vscode.Disposable {
             this.disposeTracking();
             await this.restoreOriginalSettings();
             this.updateStatusBar('off');
-            if (notifyUser) vscode.window.showInformationMessage('Antigravity AutoAccept: Stopped');
+            // Silent stop
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
             this.log(`stop error: ${msg}`);
@@ -832,21 +826,27 @@ export class AutoAcceptor implements vscode.Disposable {
     private updateStatusBar(state: 'on' | 'off'): void {
         if (this.isDisposed || !this.statusBarItem) { return; }
 
+        const config = vscode.workspace.getConfiguration('autoAcceptAgent');
+        if (!config.get<boolean>('showStatusBarItem', true)) {
+            this.statusBarItem.hide();
+            return;
+        }
+
         try {
             switch (state) {
                 case 'on':
-                    this.statusBarItem.text = '$(zap) Antigravity AutoAccept: ON';
+                    this.statusBarItem.text = '$(check) AutoAccept';
                     this.statusBarItem.tooltip =
                         `Antigravity AutoAccept is ACTIVE\n` +
                         `• Auto-accepts routine tool commands & diffs\n` +
                         `• Plan reviews ("Proceed", "Review") remain MANUAL\n` +
                         `Click to toggle.`;
-                    this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.prominentBackground');
+                    this.statusBarItem.backgroundColor = undefined;
                     break;
                 case 'off':
-                    this.statusBarItem.text = '$(x) Antigravity AutoAccept: OFF';
+                    this.statusBarItem.text = '$(circle-slash) AutoAccept: OFF';
                     this.statusBarItem.tooltip = 'Antigravity AutoAccept is stopped. Click to start.';
-                    this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
+                    this.statusBarItem.backgroundColor = undefined;
                     break;
             }
             this.statusBarItem.show();
