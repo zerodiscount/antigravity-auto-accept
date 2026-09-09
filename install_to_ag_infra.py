@@ -4,8 +4,12 @@ import zipfile
 import json
 import shutil
 import time
+import glob
 
-vsix_path = "/home/antigravity/Workspace/Dev/Tools/hygient-antigravity-autoaccept/hygient-antigravity-autoaccept-1.2.0.vsix"
+version = "1.2.3"
+vsix_path = "/home/antigravity/Workspace/Dev/Tools/hygient-antigravity-autoaccept/antigravity-auto-accept.vsix"
+
+# 1. Local ag-infra deployment
 servers = [
     "/home/antigravity/.antigravity-ide-server",
     "/home/antigravity/.antigravity-server",
@@ -16,21 +20,18 @@ for srv in servers:
     if not os.path.exists(ext_base):
         continue
     
-    dest_dir = os.path.join(ext_base, "hygient.hygient-antigravity-autoaccept-1.2.0-universal")
-    old_dest_dir = os.path.join(ext_base, "hygient.hygient-antigravity-autoaccept-1.0.0-universal")
+    dest_dir = os.path.join(ext_base, f"hygient.hygient-antigravity-autoaccept-{version}-universal")
     extensions_json_path = os.path.join(ext_base, "extensions.json")
     obsolete_json_path = os.path.join(ext_base, ".obsolete")
 
-    print(f"Installing to {dest_dir}...")
+    print(f"[ag-infra] Cleaning old extensions in {ext_base}...")
+    for old_dir in glob.glob(os.path.join(ext_base, "hygient.hygient-antigravity-autoaccept-*")):
+        print(f"  Removing: {old_dir}")
+        shutil.rmtree(old_dir, ignore_errors=True)
 
-    # 1. Clean existing
-    if os.path.exists(old_dest_dir):
-        shutil.rmtree(old_dest_dir)
-    if os.path.exists(dest_dir):
-        shutil.rmtree(dest_dir)
+    print(f"[ag-infra] Installing v{version} to {dest_dir}...")
     os.makedirs(dest_dir, exist_ok=True)
 
-    # 2. Extract vsix
     with zipfile.ZipFile(vsix_path, "r") as z:
         for member in z.infolist():
             if member.filename.startswith("extension/"):
@@ -48,18 +49,18 @@ for srv in servers:
                 with open(os.path.join(dest_dir, ".vsixmanifest"), "wb") as f:
                     f.write(z.read(member))
 
-    # 3. Update extensions.json
+    # Update extensions.json
     ext_entry = {
         "identifier": {
             "id": "hygient.hygient-antigravity-autoaccept"
         },
-        "version": "1.2.0",
+        "version": version,
         "location": {
             "$mid": 1,
             "path": dest_dir,
             "scheme": "file"
         },
-        "relativeLocation": "hygient.hygient-antigravity-autoaccept-1.2.0-universal",
+        "relativeLocation": f"hygient.hygient-antigravity-autoaccept-{version}-universal",
         "metadata": {
             "installedTimestamp": int(time.time() * 1000),
             "pinned": False,
@@ -87,19 +88,20 @@ for srv in servers:
     with open(extensions_json_path, "w") as f:
         json.dump(extensions, f, indent=2)
 
-    # 4. Clean .obsolete
+    # Clean .obsolete
     if os.path.exists(obsolete_json_path):
         try:
             with open(obsolete_json_path, "r") as f:
                 obsolete = json.load(f)
-            obsolete.pop("hygient.hygient-antigravity-autoaccept-1.0.0-universal", None)
-            obsolete.pop("hygient.hygient-antigravity-autoaccept-1.2.0-universal", None)
+            keys = [k for k in obsolete if "hygient.hygient-antigravity-autoaccept" in k]
+            for k in keys:
+                del obsolete[k]
             with open(obsolete_json_path, "w") as f:
                 json.dump(obsolete, f)
-        except Exception as e:
-            print(f"Notice: .obsolete cleanup: {e}")
+        except Exception:
+            pass
 
-    # 5. Ensure Machine settings.json has auto-approval flags
+    # Update machine settings
     settings_path = os.path.join(srv, "data", "Machine", "settings.json")
     if os.path.exists(os.path.dirname(settings_path)):
         settings = {}
@@ -109,18 +111,9 @@ for srv in servers:
                     settings = json.load(f)
             except Exception:
                 settings = {}
-        settings["chat.tools.global.autoApprove"] = True
-        settings["chat.tools.edits.autoApprove"] = True
-        settings["chat.tools.terminal.enableAutoApprove"] = True
-        settings["chat.tools.terminal.autoApprove"] = True
-        settings["chat.tools.run_command.autoApprove"] = True
-        settings["chat.tools.default_api:run_command.autoApprove"] = True
-        settings["chat.tools.write_to_file.autoApprove"] = True
-        settings["chat.tools.replace_file_content.autoApprove"] = True
-        settings["chat.tools.multi_replace_file_content.autoApprove"] = True
-        settings["chat.agent.autoApprove"] = True
+        settings["autoAcceptAgent.checkForUpdates"] = False
+        settings["autoAcceptAgent.autoUpdate"] = False
         with open(settings_path, "w") as f:
             json.dump(settings, f, indent=4)
-        print(f"Updated Machine settings at {settings_path}")
 
-print("Successfully deployed Hygient AutoAccept v1.2.0 locally in ag-infra!")
+print("Local ag-infra update complete!")

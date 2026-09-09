@@ -4,20 +4,23 @@ import zipfile
 import json
 import shutil
 import time
+import glob
 
-vsix_path = "/mnt/dev_ai_core/workspace/Dev/Tools/hygient-antigravity-autoaccept/hygient-antigravity-autoaccept-1.2.0.vsix"
-dest_dir = "/home/frappe/.antigravity-ide-server/extensions/hygient.hygient-antigravity-autoaccept-1.2.0-universal"
-extensions_json_path = "/home/frappe/.antigravity-ide-server/extensions/extensions.json"
-obsolete_json_path = "/home/frappe/.antigravity-ide-server/extensions/.obsolete"
+version = "1.2.3"
+vsix_path = "/mnt/dev_ai_core/workspace/Dev/Tools/hygient-antigravity-autoaccept/antigravity-auto-accept.vsix"
+ext_base = "/home/frappe/.antigravity-ide-server/extensions"
+dest_dir = os.path.join(ext_base, f"hygient.hygient-antigravity-autoaccept-{version}-universal")
+extensions_json_path = os.path.join(ext_base, "extensions.json")
+obsolete_json_path = os.path.join(ext_base, ".obsolete")
 
-print(f"Installing from {vsix_path} to {dest_dir}...")
+print(f"[ag-dev] Cleaning old extensions in {ext_base}...")
+for old_dir in glob.glob(os.path.join(ext_base, "hygient.hygient-antigravity-autoaccept-*")):
+    print(f"  Removing: {old_dir}")
+    shutil.rmtree(old_dir, ignore_errors=True)
 
-# 1. Clean existing
-if os.path.exists(dest_dir):
-    shutil.rmtree(dest_dir)
+print(f"[ag-dev] Installing v{version} to {dest_dir}...")
 os.makedirs(dest_dir, exist_ok=True)
 
-# 2. Extract vsix
 with zipfile.ZipFile(vsix_path, "r") as z:
     for member in z.infolist():
         if member.filename.startswith("extension/"):
@@ -35,18 +38,17 @@ with zipfile.ZipFile(vsix_path, "r") as z:
             with open(os.path.join(dest_dir, ".vsixmanifest"), "wb") as f:
                 f.write(z.read(member))
 
-# 3. Update extensions.json
 ext_entry = {
     "identifier": {
         "id": "hygient.hygient-antigravity-autoaccept"
     },
-    "version": "1.2.0",
+    "version": version,
     "location": {
         "$mid": 1,
         "path": dest_dir,
         "scheme": "file"
     },
-    "relativeLocation": "hygient.hygient-antigravity-autoaccept-1.2.0-universal",
+    "relativeLocation": f"hygient.hygient-antigravity-autoaccept-{version}-universal",
     "metadata": {
         "installedTimestamp": int(time.time() * 1000),
         "pinned": False,
@@ -63,27 +65,30 @@ ext_entry = {
 
 extensions = []
 if os.path.exists(extensions_json_path):
-    with open(extensions_json_path, "r") as f:
-        extensions = json.load(f)
+    try:
+        with open(extensions_json_path, "r") as f:
+            extensions = json.load(f)
+    except Exception:
+        extensions = []
 extensions = [e for e in extensions if e.get("identifier", {}).get("id") != "hygient.hygient-antigravity-autoaccept"]
 extensions.append(ext_entry)
 
 with open(extensions_json_path, "w") as f:
     json.dump(extensions, f, indent=2)
 
-# 4. Clean .obsolete
 if os.path.exists(obsolete_json_path):
     try:
         with open(obsolete_json_path, "r") as f:
             obsolete = json.load(f)
-        obsolete.pop("hygient.hygient-antigravity-autoaccept-1.0.0-universal", None)
-        obsolete.pop("hygient.hygient-antigravity-autoaccept-1.2.0-universal", None)
+        keys = [k for k in obsolete if "hygient.hygient-antigravity-autoaccept" in k]
+        for k in keys:
+            del obsolete[k]
         with open(obsolete_json_path, "w") as f:
             json.dump(obsolete, f)
-    except Exception as e:
-        print(f"Notice: .obsolete cleanup: {e}")
+    except Exception:
+        pass
 
-# 5. Fix permissions
+# Fix permissions
 shutil.chown(dest_dir, user="frappe", group="frappe")
 for root, dirs, files in os.walk(dest_dir):
     for d in dirs:
@@ -92,4 +97,4 @@ for root, dirs, files in os.walk(dest_dir):
         shutil.chown(os.path.join(root, f), user="frappe", group="frappe")
 shutil.chown(extensions_json_path, user="frappe", group="frappe")
 
-print("Successfully installed Hygient AutoAccept v1.2.0 on ag-dev!")
+print("ag-dev update complete!")
