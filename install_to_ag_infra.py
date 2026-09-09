@@ -6,7 +6,11 @@ import shutil
 import time
 import glob
 
-version = json.load(open("/mnt/dev_ai_core/workspace/Dev/Tools/hygient-antigravity-autoaccept/package.json"))["version"]
+pkg = json.load(open("/mnt/dev_ai_core/workspace/Dev/Tools/hygient-antigravity-autoaccept/package.json"))
+version = pkg["version"]
+publisher = pkg.get("publisher", "zerodiscount")
+ext_name = pkg.get("name", "antigravity-auto-accept")
+ext_id = f"{publisher}.{ext_name}"
 vsix_path = "/home/antigravity/Workspace/Dev/Tools/hygient-antigravity-autoaccept/antigravity-auto-accept.vsix"
 
 # 1. Local ag-infra deployment
@@ -20,14 +24,15 @@ for srv in servers:
     if not os.path.exists(ext_base):
         continue
     
-    dest_dir = os.path.join(ext_base, f"hygient.hygient-antigravity-autoaccept-{version}-universal")
+    dest_dir = os.path.join(ext_base, f"{ext_id}-{version}-universal")
     extensions_json_path = os.path.join(ext_base, "extensions.json")
     obsolete_json_path = os.path.join(ext_base, ".obsolete")
 
     print(f"[ag-infra] Cleaning old extensions in {ext_base}...")
-    for old_dir in glob.glob(os.path.join(ext_base, "hygient.hygient-antigravity-autoaccept-*")):
-        print(f"  Removing: {old_dir}")
-        shutil.rmtree(old_dir, ignore_errors=True)
+    for pattern in ["hygient.hygient-antigravity-autoaccept-*", f"{ext_id}-*"]:
+        for old_dir in glob.glob(os.path.join(ext_base, pattern)):
+            print(f"  Removing: {old_dir}")
+            shutil.rmtree(old_dir, ignore_errors=True)
 
     print(f"[ag-infra] Installing v{version} to {dest_dir}...")
     os.makedirs(dest_dir, exist_ok=True)
@@ -52,7 +57,7 @@ for srv in servers:
     # Update extensions.json
     ext_entry = {
         "identifier": {
-            "id": "hygient.hygient-antigravity-autoaccept"
+            "id": ext_id
         },
         "version": version,
         "location": {
@@ -60,13 +65,13 @@ for srv in servers:
             "path": dest_dir,
             "scheme": "file"
         },
-        "relativeLocation": f"hygient.hygient-antigravity-autoaccept-{version}-universal",
+        "relativeLocation": f"{ext_id}-{version}-universal",
         "metadata": {
             "installedTimestamp": int(time.time() * 1000),
             "pinned": False,
             "source": "custom",
-            "publisherId": "hygient-internal",
-            "publisherDisplayName": "Hygient",
+            "publisherId": publisher,
+            "publisherDisplayName": "ZeroDiscount",
             "targetPlatform": "universal",
             "updated": False,
             "private": True,
@@ -82,7 +87,7 @@ for srv in servers:
                 extensions = json.load(f)
         except Exception:
             extensions = []
-    extensions = [e for e in extensions if e.get("identifier", {}).get("id") != "hygient.hygient-antigravity-autoaccept"]
+    extensions = [e for e in extensions if e.get("identifier", {}).get("id") not in ("hygient.hygient-antigravity-autoaccept", ext_id)]
     extensions.append(ext_entry)
 
     with open(extensions_json_path, "w") as f:
@@ -93,7 +98,7 @@ for srv in servers:
         try:
             with open(obsolete_json_path, "r") as f:
                 obsolete = json.load(f)
-            keys = [k for k in obsolete if "hygient.hygient-antigravity-autoaccept" in k]
+            keys = [k for k in obsolete if "hygient-antigravity-autoaccept" in k or "antigravity-auto-accept" in k]
             for k in keys:
                 del obsolete[k]
             with open(obsolete_json_path, "w") as f:

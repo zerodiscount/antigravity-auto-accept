@@ -61,7 +61,6 @@ export class AutoAcceptor implements vscode.Disposable {
     private readonly criticalAcceptCommands: string[] = [
         // Antigravity Native Diff & File Acceptance ("Accept Changes" / "Accept All" in Cascade)
         'antigravity.prioritized.agentAcceptAllInFile',
-        'antigravity.closeAllDiffZones',
         'antigravity.prioritized.agentAcceptFocusedHunk',
         'antigravity.prioritized.submitCodeAcknowledgement',
 
@@ -80,7 +79,6 @@ export class AutoAcceptor implements vscode.Disposable {
 
     private readonly secondaryAcceptCommands: string[] = [
         // VS Code built-in chat / editing
-        'workbench.action.chat.accept',
         'inlineChat.keep',
 
         // Terminal suggestions
@@ -92,9 +90,7 @@ export class AutoAcceptor implements vscode.Disposable {
      */
     private readonly autoApproveSettings: Array<[string, string, unknown]> = [
         ['chat.tools.global', 'autoApprove', true],
-        ['chat.tools.edits', 'autoApprove', true],
         ['chat.tools.terminal', 'enableAutoApprove', true],
-        ['chat.tools.terminal', 'autoApprove', true],
         ['chat.tools.urls', 'autoApprove', true],
         ['chat.tools.run_command', 'autoApprove', true],
         ['chat.tools.default_api:run_command', 'autoApprove', true],
@@ -452,8 +448,7 @@ export class AutoAcceptor implements vscode.Disposable {
                             const fileAcceptCmds = [
                                 'antigravity.prioritized.agentAcceptAllInFile',
                                 'antigravity.prioritized.agentAcceptFocusedHunk',
-                                'antigravity.closeAllDiffZones',
-                                'inlineChat.acceptChanges',
+                                                        'inlineChat.acceptChanges',
                             ];
                             for (const cmd of fileAcceptCmds) {
                                 try {
@@ -476,8 +471,7 @@ export class AutoAcceptor implements vscode.Disposable {
                             const fileAcceptCmds = [
                                 'antigravity.prioritized.agentAcceptAllInFile',
                                 'antigravity.prioritized.agentAcceptFocusedHunk',
-                                'antigravity.closeAllDiffZones',
-                                'inlineChat.acceptChanges',
+                                                        'inlineChat.acceptChanges',
                             ];
                             for (const cmd of fileAcceptCmds) {
                                 try {

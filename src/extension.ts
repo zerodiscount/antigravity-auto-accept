@@ -39,7 +39,6 @@ export function activate(context: vscode.ExtensionContext): void {
                 }
                 const cmds = [
                     'antigravity.prioritized.agentAcceptAllInFile',
-                    'antigravity.closeAllDiffZones',
                     'antigravity.prioritized.agentAcceptFocusedHunk',
                     'antigravity.prioritized.submitCodeAcknowledgement',
                     'antigravity.command.accept',

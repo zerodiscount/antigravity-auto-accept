@@ -2,7 +2,7 @@
   "name": "antigravity-auto-accept",
   "displayName": "Antigravity AutoAccept",
   "description": "Zero-friction, free, and open-source auto-acceptance for AI agent edits, diffs, and terminal commands in Google Antigravity. Built for local desktop & Remote-SSH with Plan review safety.",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "icon": "icon.png",
   "publisher": "zerodiscount",
   "repository": {
@@ -13,8 +13,8 @@
     "vscode": "^1.90.0"
   },
   "extensionKind": [
-    "ui",
-    "workspace"
+    "workspace",
+    "ui"
   ],
   "keywords": [
     "auto-accept",
@@ -27,8 +27,7 @@
   ],
   "categories": [
     "Machine Learning",
-    "Other",
-    "Programming Languages"
+    "Other"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -38,27 +37,33 @@
     "commands": [
       {
         "command": "autoAcceptAgent.toggle",
-        "title": "Antigravity AutoAccept: Toggle"
+        "title": "Toggle",
+        "category": "Antigravity AutoAccept"
       },
       {
         "command": "autoAcceptAgent.start",
-        "title": "Antigravity AutoAccept: Start"
+        "title": "Start",
+        "category": "Antigravity AutoAccept"
       },
       {
         "command": "autoAcceptAgent.stop",
-        "title": "Antigravity AutoAccept: Stop"
+        "title": "Stop",
+        "category": "Antigravity AutoAccept"
       },
       {
         "command": "autoAcceptAgent.acceptNow",
-        "title": "Antigravity AutoAccept: Accept All Pending Now"
+        "title": "Accept All Pending Now",
+        "category": "Antigravity AutoAccept"
       },
       {
         "command": "autoAcceptAgent.diagnostics",
-        "title": "Antigravity AutoAccept: Run Diagnostics"
+        "title": "Run Diagnostics",
+        "category": "Antigravity AutoAccept"
       },
       {
         "command": "autoAcceptAgent.checkForUpdates",
-        "title": "Antigravity AutoAccept: Check for Updates"
+        "title": "Check for Updates",
+        "category": "Antigravity AutoAccept"
       }
     ],
     "keybindings": [
@@ -82,7 +87,7 @@
           "description": "Enable automatic polling of accept/approve commands."
         },
         "autoAcceptAgent.pollIntervalMs": {
-          "type": "number",
+          "type": "integer",
           "default": 800,
           "minimum": 200,
           "maximum": 10000,
@@ -137,7 +142,7 @@
         },
         "autoAcceptAgent.updateServerUrl": {
           "type": "string",
-          "default": "http://10.2.200.120:3000",
+          "default": "http://10.2.100.120:3000",
           "description": "Internal Forgejo server URL for extension updates."
         }
       }

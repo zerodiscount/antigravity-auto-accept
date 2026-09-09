@@ -2,6 +2,15 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.6] - 2026-09-09
+
+### Fixed & Refactored
+- **Diff Zone Preservation**: Removed hazardous `'antigravity.closeAllDiffZones'` command from automated acceptance and editor switch listeners, preventing pending diffs and active agent edits from being inadvertently closed or reverted.
+- **Deduplication**: Removed duplicate `'workbench.action.chat.accept'` from polling command queues.
+- **Cluster Integration**: Updated Forgejo server URL defaults to cluster canonical endpoint `http://10.2.100.120:3000`.
+- **Packaging & Manifest Cleanliness**: Removed invalid manifest keys and structured command titles with standardized `category: "Antigravity AutoAccept"`.
+- **Dynamic Deployment Scripts**: Updated `install_to_ag_infra.py` and `install_to_ag_dev.py` to use dynamic relative paths.
+
 ## [1.2.5] - 2026-09-09
 
 ### Fixed

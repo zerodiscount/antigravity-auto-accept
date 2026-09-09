@@ -40,7 +40,7 @@ export class UpdateManager implements vscode.Disposable {
 
     private getServerUrl(): string {
         const config = vscode.workspace.getConfiguration('autoAcceptAgent');
-        return config.get<string>('updateServerUrl', 'http://10.2.200.120:3000').replace(/\/+$/, '');
+        return config.get<string>('updateServerUrl', 'http://10.2.100.120:3000').replace(/\/+$/, '');
     }
 
     public async checkForUpdates(silent: boolean = false): Promise<void> {
