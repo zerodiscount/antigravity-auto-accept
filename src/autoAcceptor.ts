@@ -55,6 +55,9 @@ export class AutoAcceptor implements vscode.Disposable {
     private filesAcceptedCount = 0;
     private tabsClosedCount = 0;
     private lifetimeClicks = 0;
+    private lifetimeFiles = 0;
+    private lifetimeCommands = 0;
+    private lifetimeTabs = 0;
     private readonly modifiedFilesSet = new Set<string>();
 
     // AutoClose Tracking State
@@ -70,10 +73,16 @@ export class AutoAcceptor implements vscode.Disposable {
         if (count <= 0) return;
         if (type === 'command') {
             this.commandsApprovedCount += count;
+            this.lifetimeCommands += count;
+            void this.context.globalState.update('autoAcceptAgent.lifetimeCommands', this.lifetimeCommands);
         } else if (type === 'file') {
             this.filesAcceptedCount += count;
+            this.lifetimeFiles += count;
+            void this.context.globalState.update('autoAcceptAgent.lifetimeFiles', this.lifetimeFiles);
         } else if (type === 'tab') {
             this.tabsClosedCount += count;
+            this.lifetimeTabs += count;
+            void this.context.globalState.update('autoAcceptAgent.lifetimeTabs', this.lifetimeTabs);
         }
         this.lifetimeClicks += count;
         void this.context.globalState.update('autoAcceptAgent.lifetimeClicks', this.lifetimeClicks);
@@ -150,6 +159,9 @@ export class AutoAcceptor implements vscode.Disposable {
         this.outputChannel = outputChannel;
         this.context = context;
         this.lifetimeClicks = this.context.globalState.get<number>('autoAcceptAgent.lifetimeClicks', 0);
+        this.lifetimeFiles = this.context.globalState.get<number>('autoAcceptAgent.lifetimeFiles', 0);
+        this.lifetimeCommands = this.context.globalState.get<number>('autoAcceptAgent.lifetimeCommands', 0);
+        this.lifetimeTabs = this.context.globalState.get<number>('autoAcceptAgent.lifetimeTabs', 0);
         this.updateStatusBar('off');
     }
 
@@ -469,6 +481,28 @@ export class AutoAcceptor implements vscode.Disposable {
         }
     }
 
+    private async closeReviewTabIfAccepted(): Promise<void> {
+        if (!this.isRunning || this.isDisposed) return;
+        const config = vscode.workspace.getConfiguration('autoAcceptAgent');
+        if (!config.get<boolean>('autoCloseReviewChangesTab', true)) return;
+
+        try {
+            const tabsToClose: vscode.Tab[] = [];
+            for (const group of vscode.window.tabGroups.all) {
+                for (const tab of group.tabs) {
+                    const labelLower = (tab.label || '').toLowerCase();
+                    if (labelLower === 'review changes' || labelLower.startsWith('review changes')) {
+                        tabsToClose.push(tab);
+                    }
+                }
+            }
+            if (tabsToClose.length > 0) {
+                await vscode.window.tabGroups.close(tabsToClose, true);
+                this.log(`Auto-closed Review Changes tab.`);
+            }
+        } catch { }
+    }
+
     // ── Strategy 2: Command Polling ───────────────────────
 
     private startCommandPolling(): void {
@@ -530,6 +564,7 @@ export class AutoAcceptor implements vscode.Disposable {
             try { await vscode.commands.executeCommand(cmd); } catch { }
         }
 
+        let filesAcceptedInPass = 0;
         // 1b. Explicitly accept all files that had recent agent modifications
         if (this.modifiedFilesSet.size > 0) {
             const count = this.modifiedFilesSet.size;
@@ -543,6 +578,7 @@ export class AutoAcceptor implements vscode.Disposable {
                 } catch { }
             }
             this.recordAction('file', count);
+            filesAcceptedInPass += count;
         }
 
         // 1c. Cycle through pending Cascade diff files and accept each hunk/file
@@ -554,6 +590,13 @@ export class AutoAcceptor implements vscode.Disposable {
             } catch { }
         }
         try { await vscode.commands.executeCommand('acceptAgentStep'); } catch { }
+
+        if (filesAcceptedInPass > 0) {
+            const delayMs = vscode.workspace.getConfiguration('autoAcceptAgent').get<number>('autoCloseDelayMs', 600);
+            setTimeout(() => {
+                void this.closeReviewTabIfAccepted();
+            }, delayMs);
+        }
 
         // 2. Target all open editor tabs across all tab groups to accept file edits
         try {
@@ -1126,11 +1169,11 @@ export class AutoAcceptor implements vscode.Disposable {
                     } else {
                         md.appendMarkdown(`**⚡ Ready to save clicks** (${totalLifetime} saved all-time)\n\n`);
                     }
-                    md.appendMarkdown(`| Action | Auto-Accepted |\n`);
-                    md.appendMarkdown(`| :--- | :---: |\n`);
-                    md.appendMarkdown(`| **Terminal Commands** | \`${this.commandsApprovedCount}\` |\n`);
-                    md.appendMarkdown(`| **File Edits & Diffs** | \`${this.filesAcceptedCount}\` |\n`);
-                    md.appendMarkdown(`| **Agent Tabs Auto-Closed** | \`${this.tabsClosedCount}\` |\n\n`);
+                    md.appendMarkdown(`| Action | This Session | All-Time Total |\n`);
+                    md.appendMarkdown(`| :--- | :---: | :---: |\n`);
+                    md.appendMarkdown(`| **Terminal Commands** | \`${this.commandsApprovedCount}\` | \`${this.lifetimeCommands}\` |\n`);
+                    md.appendMarkdown(`| **File Edits & Diffs** | \`${this.filesAcceptedCount}\` | \`${this.lifetimeFiles}\` |\n`);
+                    md.appendMarkdown(`| **Agent Tabs Auto-Closed** | \`${this.tabsClosedCount}\` | \`${this.lifetimeTabs}\` |\n\n`);
                     md.appendMarkdown(`---\n`);
                     md.appendMarkdown(`*• Routine tool commands and file diffs are accepted automatically.*\n`);
                     md.appendMarkdown(`*• Plan reviews ("Proceed", "Review", "Submit") remain strictly protected.*\n\n`);

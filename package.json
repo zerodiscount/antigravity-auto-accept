@@ -2,7 +2,7 @@
   "name": "antigravity-auto-accept",
   "displayName": "Antigravity AutoAcceptClose",
   "description": "Zero-friction auto-acceptance and smart auto-close for AI agent edits, diffs, and terminal commands in Google Antigravity. Automatically sweeps and closes agent-opened file tabs while protecting user files and plan reviews. Use at your own risk.",
-  "version": "1.2.21",
+  "version": "1.2.22",
   "icon": "icon.png",
   "publisher": "zerodiscount",
   "repository": {
@@ -136,6 +136,11 @@
           "minimum": 200,
           "maximum": 5000,
           "description": "Delay in milliseconds before closing an auto-accepted editor tab to allow background saves to settle."
+        },
+        "autoAcceptAgent.autoCloseReviewChangesTab": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically close the Review Changes tab once all agent changes in the step have been accepted."
         }
       }
     }
