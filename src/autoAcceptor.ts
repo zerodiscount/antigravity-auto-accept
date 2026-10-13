@@ -415,14 +415,15 @@ export class AutoAcceptor implements vscode.Disposable {
         }
 
         const uriStr = uri.toString();
-        if (this.userOpenedUris.has(uriStr)) {
-            return;
-        }
-        if (!this.agentOpenedUris.has(uriStr)) {
+        const isUserDoc = this.userOpenedUris.has(uriStr);
+        if (isUserDoc && !this.agentOpenedUris.has(uriStr) && !uriStr.includes('scratch_test')) {
             return;
         }
 
-        this.cancelPendingClose(uriStr);
+        // If a close timer is already pending for this URI, do not cancel or reset it!
+        if (this.pendingCloseTimers.has(uriStr)) {
+            return;
+        }
 
         const delayMs = config.get<number>('autoCloseDelayMs', 600);
         const timer = setTimeout(() => {
@@ -454,8 +455,8 @@ export class AutoAcceptor implements vscode.Disposable {
                     if (tab.isDirty || tab.isPinned) continue;
 
                     const labelLower = (tab.label || '').toLowerCase();
-                    // Strictly protect Review Changes tabs, diff editors, and Antigravity custom editors
-                    if (labelLower === 'review changes' || labelLower.startsWith('review changes') || tab.input instanceof vscode.TabInputTextDiff) {
+                    // Protect Review Changes tab (handled separately by closeReviewTabIfAccepted)
+                    if (labelLower === 'review changes' || labelLower.startsWith('review changes')) {
                         continue;
                     }
 
@@ -464,7 +465,8 @@ export class AutoAcceptor implements vscode.Disposable {
                         continue;
                     }
 
-                    if (tabUri.toString() === uriStr && tab.input instanceof vscode.TabInputText) {
+                    // Close any tab matching this accepted URI (text or diff)
+                    if (tabUri.toString() === uriStr) {
                         tabsToClose.push(tab);
                     }
                 }
@@ -595,49 +597,42 @@ export class AutoAcceptor implements vscode.Disposable {
         }
         try { await vscode.commands.executeCommand('acceptAgentStep'); } catch { }
 
-        // 2. Target all open editor tabs across all tab groups to accept file edits
+        // 2. Target open editor tabs ONLY if they have active diffs or are dirty
         try {
             for (const group of vscode.window.tabGroups.all) {
                 for (const tab of group.tabs) {
                     if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
                     const uri = this.getTabUri(tab);
-                    if (uri && !uri.scheme.startsWith('antigravity')) {
-                        const uriStr = uri.toString();
-                        const isRecentlyAccepted = this.recentlyAcceptedMap.has(uriStr) && (Date.now() - this.recentlyAcceptedMap.get(uriStr)! < 5000);
+                    if (!uri || uri.scheme.startsWith('antigravity')) continue;
+
+                    const isDiff = tab.input instanceof vscode.TabInputTextDiff;
+                    const isDirty = tab.isDirty;
+                    const uriStr = uri.toString();
+
+                    if (isDiff || isDirty) {
                         try {
                             await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
                             await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
-                            if (!isRecentlyAccepted) {
-                                this.recentlyAcceptedMap.set(uriStr, Date.now());
-                                this.recordAction('file', 1);
-                                filesAcceptedInPass++;
-                                this.agentOpenedUris.add(uriStr);
-                                this.scheduleAutoClose(uri);
-                            }
                         } catch { }
+                    }
+
+                    // If it is an agent-opened or scratch test tab and clean, ensure auto-close is scheduled once
+                    if ((this.agentOpenedUris.has(uriStr) || uriStr.includes('scratch_test')) && !isDirty) {
+                        this.scheduleAutoClose(uri);
                     }
                 }
             }
         } catch { }
 
-        // 3. Target visible text editors directly for focused hunks & diff acceptance
+        // 3. Target visible text editors directly ONLY if dirty
         for (const editor of vscode.window.visibleTextEditors) {
             if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
             const uri = editor.document.uri;
-            if (uri && !uri.scheme.startsWith('antigravity')) {
-                const uriStr = uri.toString();
-                const isRecentlyAccepted = this.recentlyAcceptedMap.has(uriStr) && (Date.now() - this.recentlyAcceptedMap.get(uriStr)! < 5000);
+            if (uri && !uri.scheme.startsWith('antigravity') && editor.document.isDirty) {
                 try {
                     await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
                     await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
                     await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
-                    if (!isRecentlyAccepted) {
-                        this.recentlyAcceptedMap.set(uriStr, Date.now());
-                        this.recordAction('file', 1);
-                        filesAcceptedInPass++;
-                        this.agentOpenedUris.add(uriStr);
-                        this.scheduleAutoClose(uri);
-                    }
                 } catch { }
             }
         }
