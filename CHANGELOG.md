@@ -2,6 +2,14 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.10] - 2026-10-13
+
+### Fixed & Enhanced
+- **Multi-File Chat Auto-Acceptance**: Integrated `chatEditing.acceptAllFiles`, `workbench.action.chat.acceptAll`, and `antigravity.prioritized.agentAcceptAll` into the core polling cycle to automatically accept batch file edits proposed within the agent conversation chat.
+- **Tab Group Sweeping**: Extended diff acceptance across all tab groups (`vscode.window.tabGroups.all`), ensuring pending modifications in background, inactive, or unpinned tabs are accepted without requiring active focus.
+- **CDP Webview Fallback Enabled**: Enabled `autoAcceptAgent.enableCDP` by default (`true`) to click remaining approval buttons directly within agent webview interfaces.
+- **Enhanced Manual Shortcut (`Ctrl+Shift+Y`)**: Updated `autoAcceptAgent.acceptNow` to execute the full multi-file chat acceptance sequence.
+
 ## [1.2.9] - 2026-09-09
 
 ### Privacy & Packaging Cleanliness

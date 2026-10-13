@@ -65,6 +65,14 @@ export class AutoAcceptor implements vscode.Disposable {
      */
     private readonly criticalAcceptCommands: string[] = [
         // Antigravity Native Diff & File Acceptance ("Accept Changes" / "Accept All" in Cascade)
+        'chatEditing.acceptAllFiles',
+        'workbench.action.chat.acceptAll',
+        'antigravity.prioritized.agentAcceptAll',
+        'antigravity.agentAcceptAll',
+        'antigravity.chat.acceptAll',
+        'antigravity.acceptAll',
+        'chatEditing.acceptFile',
+        'chatEditor.action.accept',
         'antigravity.prioritized.agentAcceptAllInFile',
         'antigravity.prioritized.agentAcceptFocusedHunk',
         'antigravity.prioritized.submitCodeAcknowledgement',
@@ -451,7 +459,42 @@ export class AutoAcceptor implements vscode.Disposable {
         if (this.isUserInteracting()) { return; }
         const interceptNotifications = this.shouldInterceptNotifications();
 
-        // Target all visible text editors for Antigravity diff acceptance
+        // 1. Direct workspace/chat-level "Accept all" commands
+        const multiFileAcceptCmds = [
+            'chatEditing.acceptAllFiles',
+            'antigravity.prioritized.agentAcceptAll',
+            'workbench.action.chat.acceptAll',
+            'antigravity.agentAcceptAll',
+            'antigravity.chat.acceptAll',
+            'antigravity.acceptAll',
+        ];
+        for (const cmd of multiFileAcceptCmds) {
+            try { await vscode.commands.executeCommand(cmd); } catch { }
+        }
+
+        // 2. Target all open editor tabs across all tab groups (covers background & unpinned tabs)
+        try {
+            for (const group of vscode.window.tabGroups.all) {
+                for (const tab of group.tabs) {
+                    if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
+                    const uri = this.getTabUri(tab);
+                    if (uri) {
+                        const uriStr = uri.toString();
+                        if (!this.userOpenedUris.has(uriStr)) {
+                            this.agentOpenedUris.add(uriStr);
+                        }
+                        try {
+                            await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
+                            if (this.agentOpenedUris.has(uriStr) && !this.userOpenedUris.has(uriStr)) {
+                                this.scheduleAutoClose(uri);
+                            }
+                        } catch { }
+                    }
+                }
+            }
+        } catch { }
+
+        // 3. Target visible text editors directly for focused hunks & diff acceptance
         for (const editor of vscode.window.visibleTextEditors) {
             if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
             const uri = editor.document.uri;
@@ -461,12 +504,14 @@ export class AutoAcceptor implements vscode.Disposable {
             }
             try {
                 await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
+                await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
                 if (this.agentOpenedUris.has(uriStr) && !this.userOpenedUris.has(uriStr)) {
                     this.scheduleAutoClose(uri);
                 }
             } catch { }
         }
 
+        // 4. Critical command polling for terminal & inline approval
         for (const cmd of this.criticalAcceptCommands) {
             if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
             if (!interceptNotifications && cmd.toLowerCase().includes('notification')) { continue; }
