@@ -1012,11 +1012,12 @@ export class AutoAcceptor implements vscode.Disposable {
         }
 
         try {
+            const version = this.context.extension?.packageJSON?.version || '1.2.11';
             switch (state) {
                 case 'on':
                     this.statusBarItem.text = '$(check) AutoAccept';
                     this.statusBarItem.tooltip =
-                        `Antigravity AutoAccept is ACTIVE\n` +
+                        `Antigravity AutoAccept v${version} (ACTIVE)\n` +
                         `• Auto-accepts routine tool commands & diffs\n` +
                         `• Auto-closes accepted agent files (preserves user & pinned tabs)\n` +
                         `• Plan reviews ("Proceed", "Review") remain MANUAL\n` +
@@ -1025,7 +1026,7 @@ export class AutoAcceptor implements vscode.Disposable {
                     break;
                 case 'off':
                     this.statusBarItem.text = '$(circle-slash) AutoAccept: OFF';
-                    this.statusBarItem.tooltip = 'Antigravity AutoAccept is stopped. Click to start.';
+                    this.statusBarItem.tooltip = `Antigravity AutoAccept v${version} is stopped. Click to start.`;
                     this.statusBarItem.backgroundColor = undefined;
                     break;
             }
