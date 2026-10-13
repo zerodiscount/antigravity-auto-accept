@@ -419,26 +419,26 @@ export class AutoAcceptor implements vscode.Disposable {
         if (!this.isRunning || this.isDisposed || this.isUserInteracting()) {
             return;
         }
-        if (this.userOpenedUris.has(uriStr)) {
-            return;
-        }
 
+        const isUserDoc = this.userOpenedUris.has(uriStr);
         const fileName = uri.path.split('/').pop() || uri.fsPath;
+
         try {
             const tabsToClose: vscode.Tab[] = [];
             for (const group of vscode.window.tabGroups.all) {
                 for (const tab of group.tabs) {
+                    if (tab.isDirty || tab.isPinned) continue;
+
                     const tabUri = this.getTabUri(tab);
                     const isMatchingUri = tabUri && tabUri.toString() === uriStr;
+                    const isDiffTab = tab.input instanceof vscode.TabInputTextDiff;
                     const labelLower = (tab.label || '').toLowerCase();
-                    const isReviewTab = labelLower.includes('review changes') &&
+                    const isReviewTab = (labelLower.includes('review') || labelLower.includes('changes')) &&
                         (!fileName || labelLower.includes(fileName.toLowerCase()));
 
-                    if (isMatchingUri || isReviewTab) {
-                        // Safety: NEVER close dirty or pinned tabs
-                        if (tab.isDirty || tab.isPinned) {
-                            return;
-                        }
+                    if (isReviewTab || (isDiffTab && isMatchingUri)) {
+                        tabsToClose.push(tab);
+                    } else if (isMatchingUri && !isUserDoc) {
                         tabsToClose.push(tab);
                     }
                 }
@@ -446,7 +446,9 @@ export class AutoAcceptor implements vscode.Disposable {
 
             if (tabsToClose.length > 0) {
                 await vscode.window.tabGroups.close(tabsToClose, true);
-                this.agentOpenedUris.delete(uriStr);
+                if (!isUserDoc) {
+                    this.agentOpenedUris.delete(uriStr);
+                }
                 this.recordAction('tab', tabsToClose.length);
                 this.log(`Auto-closed accepted editor / review tab: ${fileName}`);
             }
@@ -582,13 +584,21 @@ export class AutoAcceptor implements vscode.Disposable {
             }
         }
 
-        // 5. Sweep any lingering "Review Changes" tabs that are clean & unpinned
+        // 5. Sweep any lingering diff tabs (TabInputTextDiff) and Review Changes tabs that are clean & unpinned
         try {
             const reviewTabs: vscode.Tab[] = [];
             for (const group of vscode.window.tabGroups.all) {
                 for (const tab of group.tabs) {
+                    if (tab.isDirty || tab.isPinned) continue;
+
                     const labelLower = (tab.label || '').toLowerCase();
-                    if (labelLower.includes('review changes') && !tab.isDirty && !tab.isPinned) {
+                    const isDiffTab = tab.input instanceof vscode.TabInputTextDiff;
+                    const isReviewLabel = labelLower.includes('review') || labelLower.includes('changes');
+                    const inputAny = tab.input as any;
+                    const isCustomReview = inputAny?.viewType?.toLowerCase().includes('review') ||
+                        inputAny?.viewType?.toLowerCase().includes('antigravity');
+
+                    if (isDiffTab || isReviewLabel || isCustomReview) {
                         reviewTabs.push(tab);
                     }
                 }
@@ -596,7 +606,7 @@ export class AutoAcceptor implements vscode.Disposable {
             if (reviewTabs.length > 0) {
                 await vscode.window.tabGroups.close(reviewTabs, true);
                 this.recordAction('tab', reviewTabs.length);
-                this.log(`Auto-closed ${reviewTabs.length} lingering Review Changes tab(s)`);
+                this.log(`Auto-closed ${reviewTabs.length} lingering Review/Diff tab(s)`);
                 try { await vscode.commands.executeCommand('antigravity.closeAllDiffZones'); } catch { }
             }
         } catch { }

@@ -2,6 +2,12 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.18] - 2026-10-13
+
+### Auto-Close All Diff & Review Tabs
+- **Diff Tabs Always Closed Upon Acceptance**: Modified `executeAutoClose` to always close `TabInputTextDiff` and `Review Changes` tabs once diffs are accepted, even if the user clicked or focused on the tab during review.
+- **Protected Regular Text Editors**: User whitelisting (`userOpenedUris`) continues to strictly protect standard file text editors, ensuring open files and pinned tabs are preserved while temporary review/diff panels are closed.
+
 ## [1.2.17] - 2026-10-13
 
 ### Clean Status Bar & Filtered Metrics
