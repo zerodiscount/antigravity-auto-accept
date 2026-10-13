@@ -419,7 +419,7 @@ export class AutoAcceptor implements vscode.Disposable {
         if (this.isDisposed) { return; }
 
         const config = vscode.workspace.getConfiguration('autoAcceptAgent');
-        const intervalMs = config.get<number>('pollIntervalMs', 800);
+        const intervalMs = config.get<number>('pollIntervalMs', 10000);
 
         if (this.fastPollInterval) {
             clearInterval(this.fastPollInterval);
@@ -1012,7 +1012,7 @@ export class AutoAcceptor implements vscode.Disposable {
         }
 
         try {
-            const version = this.context.extension?.packageJSON?.version || '1.2.11';
+            const version = this.context.extension?.packageJSON?.version || '1.2.14';
             switch (state) {
                 case 'on':
                     this.statusBarItem.text = '$(check) AutoAccept';

@@ -10,7 +10,9 @@ export function activate(context: vscode.ExtensionContext): void {
         output.appendLine('Antigravity AutoAccept activated');
 
         const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
+        statusBar.name = 'Antigravity AutoAccept';
         statusBar.command = 'autoAcceptAgent.toggle';
+        context.subscriptions.push(statusBar);
 
         acceptor = new AutoAcceptor(statusBar, output, context);
 

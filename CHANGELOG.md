@@ -2,6 +2,18 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.14] - 2026-10-13
+
+### Legal & Governance
+- **Disclaimer & User Responsibility Notice**: Added an explicit legal disclaimer and user responsibility notice to `README.md` and package documentation, clarifying that automated tool execution is at the user's sole risk and discretion, with explicit recommendations on maintaining and tailoring `blockedCommands`.
+
+## [1.2.13] - 2026-10-13
+
+### Remote-SSH & Performance Optimization
+- **Remote Workspace Extension Kind Alignment**: Updated `"extensionKind": ["workspace", "ui"]` so the extension executes seamlessly in the Remote Extension Host alongside workspace extensions (AGQ, KG Sync) during Remote-SSH sessions, preventing the status bar item from being hidden/clobbered during remote workspace initialization.
+- **CPU & Thermal Optimization**: Increased default `pollIntervalMs` from 800ms to 10,000ms (every 10s) and set `enableCDP: false` by default, eliminating high CPU utilization, continuous port scanning, and fan noise on developer workstations.
+- **Status Bar Name Registration**: Explicitly assigned `statusBar.name = 'Antigravity AutoAccept'` and registered to extension subscriptions for reliable status bar context menu visibility and persistence.
+
 ## [1.2.12] - 2026-10-13
 
 ### UI & UX Polish

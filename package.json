@@ -1,8 +1,8 @@
 {
   "name": "antigravity-auto-accept",
   "displayName": "Antigravity AutoAcceptClose",
-  "description": "Zero-friction auto-acceptance and smart auto-close for AI agent edits, diffs, and terminal commands in Google Antigravity. Automatically sweeps and closes agent-opened file tabs while protecting user files and plan reviews.",
-  "version": "1.2.12",
+  "description": "Zero-friction auto-acceptance and smart auto-close for AI agent edits, diffs, and terminal commands in Google Antigravity. Automatically sweeps and closes agent-opened file tabs while protecting user files and plan reviews. Use at your own risk.",
+  "version": "1.2.14",
   "icon": "icon.png",
   "publisher": "zerodiscount",
   "repository": {
@@ -13,8 +13,8 @@
     "vscode": "^1.90.0"
   },
   "extensionKind": [
-    "ui",
-    "workspace"
+    "workspace",
+    "ui"
   ],
   "keywords": [
     "auto-accept",
@@ -83,10 +83,10 @@
         },
         "autoAcceptAgent.pollIntervalMs": {
           "type": "integer",
-          "default": 800,
+          "default": 10000,
           "minimum": 200,
-          "maximum": 10000,
-          "description": "Interval in milliseconds between polling cycles. Lower = faster auto-acceptance but more CPU. Default: 800ms."
+          "maximum": 60000,
+          "description": "Interval in milliseconds between polling cycles. Lower = faster auto-acceptance but more CPU. Default: 10000ms (10s)."
         },
         "autoAcceptAgent.autoConfigureSettings": {
           "type": "boolean",
@@ -100,8 +100,8 @@
         },
         "autoAcceptAgent.enableCDP": {
           "type": "boolean",
-          "default": true,
-          "description": "Enable optional CDP fallback to click approval buttons directly in webviews when command polling cannot reach them. Default: true."
+          "default": false,
+          "description": "Enable optional CDP fallback to click approval buttons directly in webviews when command polling cannot reach them. Default: false."
         },
         "autoAcceptAgent.customButtonTexts": {
           "type": "array",
