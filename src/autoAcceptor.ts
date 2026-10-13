@@ -406,7 +406,7 @@ export class AutoAcceptor implements vscode.Disposable {
 
         const delayMs = config.get<number>('autoCloseDelayMs', 600);
         const timer = setTimeout(() => {
-            void this.executeAutoClose(uri).catch(() => {});
+            void this.executeAutoClose(uri).catch(() => { });
         }, delayMs);
 
         this.pendingCloseTimers.set(uriStr, timer);
@@ -711,7 +711,7 @@ export class AutoAcceptor implements vscode.Disposable {
                         void (async () => {
                             if (!this.isRunning || this.isDisposed || this.isUserInteracting()) return;
                             await this.fastPoll();
-                        })().catch(() => {});
+                        })().catch(() => { });
                     }, 400);
                 }
             })
@@ -733,7 +733,7 @@ export class AutoAcceptor implements vscode.Disposable {
                             const fileAcceptCmds = [
                                 'antigravity.prioritized.agentAcceptAllInFile',
                                 'antigravity.prioritized.agentAcceptFocusedHunk',
-                                                        'inlineChat.acceptChanges',
+                                'inlineChat.acceptChanges',
                             ];
                             for (const cmd of fileAcceptCmds) {
                                 try {
@@ -756,7 +756,7 @@ export class AutoAcceptor implements vscode.Disposable {
                             const fileAcceptCmds = [
                                 'antigravity.prioritized.agentAcceptAllInFile',
                                 'antigravity.prioritized.agentAcceptFocusedHunk',
-                                                        'inlineChat.acceptChanges',
+                                'inlineChat.acceptChanges',
                             ];
                             for (const cmd of fileAcceptCmds) {
                                 try {
