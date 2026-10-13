@@ -2,6 +2,12 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.21] - 2026-10-13
+
+### Trusted Publisher & Clean Public Release
+- **Verified Clean Release**: Fresh release for the verified Eclipse Open-VSX `zerodiscount` namespace with trusted publishing configuration.
+- **Diff & Review Protection**: Complete elimination of Review Changes tab oscillation and diff flicker. AutoAccept operates smoothly without disturbing user diff reviews or unprompted tab sweeps.
+
 ## [1.2.20] - 2026-10-13
 
 ### Fix Review Changes Tab Flashing Loop

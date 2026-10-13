@@ -347,7 +347,7 @@ export class AutoAcceptor implements vscode.Disposable {
     private getTabUri(tab: vscode.Tab): vscode.Uri | undefined {
         if (!tab || !tab.input) { return undefined; }
         const labelLower = (tab.label || '').toLowerCase();
-        if (labelLower.includes('review') || labelLower.includes('changes')) {
+        if (labelLower === 'review changes' || labelLower.startsWith('review changes')) {
             return undefined;
         }
         if (tab.input instanceof vscode.TabInputText) {
@@ -442,7 +442,7 @@ export class AutoAcceptor implements vscode.Disposable {
 
                     const labelLower = (tab.label || '').toLowerCase();
                     // Strictly protect Review Changes tabs, diff editors, and Antigravity custom editors
-                    if (labelLower.includes('review') || labelLower.includes('changes') || tab.input instanceof vscode.TabInputTextDiff) {
+                    if (labelLower === 'review changes' || labelLower.startsWith('review changes') || tab.input instanceof vscode.TabInputTextDiff) {
                         continue;
                     }
 
@@ -533,9 +533,18 @@ export class AutoAcceptor implements vscode.Disposable {
             try { await vscode.commands.executeCommand(cmd); } catch { }
         }
 
+        // 1b. Explicitly accept all files that had recent agent modifications
         if (this.modifiedFilesSet.size > 0) {
             const count = this.modifiedFilesSet.size;
+            const filesToAccept = Array.from(this.modifiedFilesSet);
             this.modifiedFilesSet.clear();
+            for (const uriStr of filesToAccept) {
+                try {
+                    const uri = vscode.Uri.parse(uriStr);
+                    await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
+                    await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
+                } catch { }
+            }
             this.recordAction('file', count);
         }
 
@@ -577,6 +586,11 @@ export class AutoAcceptor implements vscode.Disposable {
             } catch {
                 // Not active — continue
             }
+        }
+
+        // 5. Final pass of global multi-file accept commands
+        for (const cmd of multiFileAcceptCmds) {
+            try { await vscode.commands.executeCommand(cmd); } catch { }
         }
     }
 
@@ -664,7 +678,7 @@ export class AutoAcceptor implements vscode.Disposable {
             vscode.workspace.onDidChangeTextDocument((e) => {
                 if (this.isRunning && e.contentChanges.length > 0) {
                     const uriStr = e.document.uri.toString();
-                    if (this.userOpenedUris.has(uriStr) || this.isUserInteracting()) {
+                    if (this.isUserInteracting()) {
                         return;
                     }
                     this.agentOpenedUris.add(uriStr);
