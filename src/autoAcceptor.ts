@@ -42,7 +42,7 @@ export class AutoAcceptor implements vscode.Disposable {
     private settingsApplied = false;
     private lastActivity = '';
     private lastUserInteractionTime = 0;
-    private readonly USER_INTERACTION_GRACE_MS = 1500;
+    private readonly USER_INTERACTION_GRACE_MS = 400;
     private readonly originalGlobalSettings = new Map<string, {
         section: string;
         key: string;
@@ -86,10 +86,10 @@ export class AutoAcceptor implements vscode.Disposable {
      */
     private readonly criticalAcceptCommands: string[] = [
         // Antigravity Native Diff & File Acceptance ("Accept Changes" / "Accept All" in Cascade & Working Set)
+        'acceptAgentStep',
         'chatEditor.action.acceptAllEdits',
         'chatEditing.acceptAllFiles',
         'workbench.action.chat.acceptAll',
-        'antigravity.prioritized.agentAcceptAll',
         'antigravity.prioritized.agentAcceptAllInFile',
         'antigravity.prioritized.agentAcceptFocusedHunk',
         'antigravity.prioritized.submitCodeAcknowledgement',
@@ -169,7 +169,7 @@ export class AutoAcceptor implements vscode.Disposable {
         if (!this.isRunning || this.isDisposed) {
             await this.start();
         }
-        await this.fastPoll();
+        await this.fastPoll(true);
         try {
             await vscode.commands.executeCommand('antigravity.closeAllDiffZones');
         } catch { }
@@ -510,21 +510,18 @@ export class AutoAcceptor implements vscode.Disposable {
         return config.get<boolean>('interceptNotifications', true);
     }
 
-    private async fastPoll(): Promise<void> {
+    private async fastPoll(force = false): Promise<void> {
         if (!this.isRunning || this.isDisposed) { return; }
-        if (this.isUserInteracting()) { return; }
+        if (!force && this.isUserInteracting()) { return; }
         const interceptNotifications = this.shouldInterceptNotifications();
 
         // 1. Direct workspace/chat-level "Accept all" commands
         const multiFileAcceptCmds = [
+            'acceptAgentStep',
             'chatEditor.action.acceptAllEdits',
             'chatEditing.acceptAllFiles',
-            'antigravity.prioritized.agentAcceptAll',
             'antigravity.prioritized.agentAcceptAllInFile',
             'workbench.action.chat.acceptAll',
-            'antigravity.agentAcceptAll',
-            'antigravity.chat.acceptAll',
-            'antigravity.acceptAll',
             'chatEditing.saveAllFiles',
             'chatEditor.action.accept',
             'chatEditor.action.acceptHunk',
@@ -547,6 +544,16 @@ export class AutoAcceptor implements vscode.Disposable {
             }
             this.recordAction('file', count);
         }
+
+        // 1c. Cycle through pending Cascade diff files and accept each hunk/file
+        for (let i = 0; i < 6; i++) {
+            try {
+                await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile');
+                await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
+                await vscode.commands.executeCommand('antigravity.prioritized.agentFocusNextFile');
+            } catch { }
+        }
+        try { await vscode.commands.executeCommand('acceptAgentStep'); } catch { }
 
         // 2. Target all open editor tabs across all tab groups to accept file edits
         try {
@@ -660,15 +667,11 @@ export class AutoAcceptor implements vscode.Disposable {
             );
         }
 
-        // Track user interaction: pause polling while user types or moves cursor
+        // Track user interaction: pause polling only while user is actively typing on keyboard
         this.trackingDisposables.push(
             vscode.window.onDidChangeTextEditorSelection((e) => {
-                if (e.kind === vscode.TextEditorSelectionChangeKind.Keyboard || e.kind === vscode.TextEditorSelectionChangeKind.Mouse) {
+                if (e.kind === vscode.TextEditorSelectionChangeKind.Keyboard) {
                     this.lastUserInteractionTime = Date.now();
-                    const uriStr = e.textEditor.document.uri.toString();
-                    this.userOpenedUris.add(uriStr);
-                    this.agentOpenedUris.delete(uriStr);
-                    this.cancelPendingClose(uriStr);
                 }
             })
         );
@@ -678,7 +681,7 @@ export class AutoAcceptor implements vscode.Disposable {
             vscode.workspace.onDidChangeTextDocument((e) => {
                 if (this.isRunning && e.contentChanges.length > 0) {
                     const uriStr = e.document.uri.toString();
-                    if (this.isUserInteracting()) {
+                    if (e.document.uri.scheme.startsWith('antigravity') || e.document.uri.scheme === 'output') {
                         return;
                     }
                     this.agentOpenedUris.add(uriStr);
@@ -691,10 +694,10 @@ export class AutoAcceptor implements vscode.Disposable {
                     }
                     docChangeDebounce = setTimeout(() => {
                         void (async () => {
-                            if (!this.isRunning || this.isDisposed || this.isUserInteracting()) return;
-                            await this.fastPoll();
+                            if (!this.isRunning || this.isDisposed) return;
+                            await this.fastPoll(true);
                         })().catch(() => { });
-                    }, 400);
+                    }, 200);
                 }
             })
         );
