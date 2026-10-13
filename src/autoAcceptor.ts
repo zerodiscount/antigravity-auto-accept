@@ -476,6 +476,11 @@ export class AutoAcceptor implements vscode.Disposable {
                 await vscode.window.tabGroups.close(tabsToClose, true);
                 this.agentOpenedUris.delete(uriStr);
                 this.recordAction('tab', tabsToClose.length);
+                const alreadyRecorded = this.recentlyAcceptedMap.has(uriStr) && (Date.now() - this.recentlyAcceptedMap.get(uriStr)! < 5000);
+                if (!alreadyRecorded) {
+                    this.recentlyAcceptedMap.set(uriStr, Date.now());
+                    this.recordAction('file', tabsToClose.length);
+                }
                 this.log(`Auto-closed accepted agent editor tab: ${fileName}`);
             }
         } catch (err: unknown) {
@@ -1193,8 +1198,12 @@ export class AutoAcceptor implements vscode.Disposable {
         }
 
         try {
-            const version = this.context.extension?.packageJSON?.version || '1.2.15';
-            const totalSession = this.commandsApprovedCount + this.filesAcceptedCount + this.tabsClosedCount;
+            const version = this.context.extension?.packageJSON?.version || '1.2.27';
+            const autoCloseEnabled = config.get<boolean>('autoCloseAcceptedEditors', true);
+            const fileLabel = autoCloseEnabled ? '**File Edits Accepted & Closed**' : '**File Edits Auto-Accepted**';
+            const fileSessionCount = autoCloseEnabled ? Math.max(this.filesAcceptedCount, this.tabsClosedCount) : this.filesAcceptedCount;
+            const fileLifetimeCount = autoCloseEnabled ? Math.max(this.lifetimeFiles, this.lifetimeTabs) : this.lifetimeFiles;
+            const totalSession = this.commandsApprovedCount + fileSessionCount;
             const totalLifetime = this.lifetimeClicks;
             const showClicksInBar = config.get<boolean>('showClicksInStatusBar', true);
             switch (state) {
@@ -1214,8 +1223,7 @@ export class AutoAcceptor implements vscode.Disposable {
                     md.appendMarkdown(`| Action | This Session | All-Time Total |\n`);
                     md.appendMarkdown(`| :--- | :---: | :---: |\n`);
                     md.appendMarkdown(`| **Terminal Commands** | \`${this.commandsApprovedCount}\` | \`${this.lifetimeCommands}\` |\n`);
-                    md.appendMarkdown(`| **File Edits & Diffs** | \`${this.filesAcceptedCount}\` | \`${this.lifetimeFiles}\` |\n`);
-                    md.appendMarkdown(`| **Agent Tabs Auto-Closed** | \`${this.tabsClosedCount}\` | \`${this.lifetimeTabs}\` |\n\n`);
+                    md.appendMarkdown(`| ${fileLabel} | \`${fileSessionCount}\` | \`${fileLifetimeCount}\` |\n\n`);
                     md.appendMarkdown(`---\n`);
                     md.appendMarkdown(`*• Routine tool commands and file diffs are accepted automatically.*\n`);
                     md.appendMarkdown(`*• Plan reviews ("Proceed", "Review", "Submit") remain strictly protected.*\n\n`);
