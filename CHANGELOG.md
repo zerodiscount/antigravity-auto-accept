@@ -2,6 +2,12 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.16] - 2026-10-13
+
+### Review Changes & Diff Zone Auto-Close
+- **Antigravity Review Changes Tab Auto-Close**: Extended tab auto-close to recognize custom `Review changes` and `antigravityReviewChangesEditor` tabs opened during agent turns, automatically closing them once file edits are accepted and unpinned.
+- **Diff Zones Cleanup**: Integrated `antigravity.closeAllDiffZones` into the post-acceptance and `acceptNow` sequences to automatically collapse and dismiss inline diff widgets across the workspace.
+
 ## [1.2.15] - 2026-10-13
 
 ### Clicks Saved Metrics & Batch Acceptance

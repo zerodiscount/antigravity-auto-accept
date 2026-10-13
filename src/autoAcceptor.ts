@@ -171,6 +171,9 @@ export class AutoAcceptor implements vscode.Disposable {
             await this.start();
         }
         await this.fastPoll();
+        try {
+            await vscode.commands.executeCommand('antigravity.closeAllDiffZones');
+        } catch { }
         vscode.window.setStatusBarMessage('$(check) Antigravity AutoAccept: Accepted all pending changes', 3000);
     }
 
@@ -348,10 +351,10 @@ export class AutoAcceptor implements vscode.Disposable {
             return tab.input.uri;
         }
         if (tab.input instanceof vscode.TabInputTextDiff) {
-            return tab.input.modified;
+            return tab.input.modified || tab.input.original;
         }
-        const inputAny = tab.input as { uri?: vscode.Uri; modified?: vscode.Uri };
-        return inputAny?.uri || inputAny?.modified;
+        const inputAny = tab.input as any;
+        return inputAny?.uri || inputAny?.modified || inputAny?.original || inputAny?.resource || inputAny?.targetUri;
     }
 
     private seedOpenTabs(): void {
@@ -420,12 +423,18 @@ export class AutoAcceptor implements vscode.Disposable {
             return;
         }
 
+        const fileName = uri.path.split('/').pop() || uri.fsPath;
         try {
             const tabsToClose: vscode.Tab[] = [];
             for (const group of vscode.window.tabGroups.all) {
                 for (const tab of group.tabs) {
                     const tabUri = this.getTabUri(tab);
-                    if (tabUri && tabUri.toString() === uriStr) {
+                    const isMatchingUri = tabUri && tabUri.toString() === uriStr;
+                    const labelLower = (tab.label || '').toLowerCase();
+                    const isReviewTab = labelLower.includes('review changes') &&
+                        (!fileName || labelLower.includes(fileName.toLowerCase()));
+
+                    if (isMatchingUri || isReviewTab) {
                         // Safety: NEVER close dirty or pinned tabs
                         if (tab.isDirty || tab.isPinned) {
                             return;
@@ -438,10 +447,13 @@ export class AutoAcceptor implements vscode.Disposable {
             if (tabsToClose.length > 0) {
                 await vscode.window.tabGroups.close(tabsToClose, true);
                 this.agentOpenedUris.delete(uriStr);
-                const fileName = uri.path.split('/').pop() || uri.fsPath;
                 this.recordAction('tab', tabsToClose.length);
-                this.log(`Auto-closed accepted editor: ${fileName}`);
+                this.log(`Auto-closed accepted editor / review tab: ${fileName}`);
             }
+
+            try {
+                await vscode.commands.executeCommand('antigravity.closeAllDiffZones');
+            } catch { }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
             this.log(`Auto-close error for ${uri.path}: ${msg}`);
@@ -569,6 +581,25 @@ export class AutoAcceptor implements vscode.Disposable {
                 // Not active — continue
             }
         }
+
+        // 5. Sweep any lingering "Review Changes" tabs that are clean & unpinned
+        try {
+            const reviewTabs: vscode.Tab[] = [];
+            for (const group of vscode.window.tabGroups.all) {
+                for (const tab of group.tabs) {
+                    const labelLower = (tab.label || '').toLowerCase();
+                    if (labelLower.includes('review changes') && !tab.isDirty && !tab.isPinned) {
+                        reviewTabs.push(tab);
+                    }
+                }
+            }
+            if (reviewTabs.length > 0) {
+                await vscode.window.tabGroups.close(reviewTabs, true);
+                this.recordAction('tab', reviewTabs.length);
+                this.log(`Auto-closed ${reviewTabs.length} lingering Review Changes tab(s)`);
+                try { await vscode.commands.executeCommand('antigravity.closeAllDiffZones'); } catch { }
+            }
+        } catch { }
     }
 
     private async fullPoll(): Promise<void> {
