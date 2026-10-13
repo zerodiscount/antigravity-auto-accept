@@ -112,7 +112,7 @@ export class AutoAcceptor implements vscode.Disposable {
         ['chat.tools.multi_replace_file_content', 'autoApprove', true],
         ['chat.agent', 'autoApprove', true],
         ['chat.agent', 'maxRequests', 999],
-
+        ['chat.editing', 'autoAcceptDelay', 1],
     ];
 
     private context: vscode.ExtensionContext;
@@ -484,6 +484,7 @@ export class AutoAcceptor implements vscode.Disposable {
                             this.agentOpenedUris.add(uriStr);
                         }
                         try {
+                            await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
                             await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
                             if (this.agentOpenedUris.has(uriStr) && !this.userOpenedUris.has(uriStr)) {
                                 this.scheduleAutoClose(uri);
@@ -503,6 +504,7 @@ export class AutoAcceptor implements vscode.Disposable {
                 this.agentOpenedUris.add(uriStr);
             }
             try {
+                await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
                 await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
                 await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
                 if (this.agentOpenedUris.has(uriStr) && !this.userOpenedUris.has(uriStr)) {
@@ -604,7 +606,6 @@ export class AutoAcceptor implements vscode.Disposable {
         this.trackingDisposables.push(
             vscode.workspace.onDidChangeTextDocument((e) => {
                 if (this.isRunning && e.contentChanges.length > 0) {
-                    this.lastUserInteractionTime = Date.now();
                     this.lastActivity = `Edited ${e.document.fileName.split(/[\\/]/).pop()}`;
                 }
             })

@@ -48,7 +48,10 @@ export function activate(context: vscode.ExtensionContext): void {
                             const inputAny = tab?.input as { uri?: vscode.Uri; modified?: vscode.Uri };
                             const uri = inputAny?.uri || inputAny?.modified;
                             if (uri) {
-                                try { await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri); } catch { }
+                                try {
+                                    await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
+                                    await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
+                                } catch { }
                             }
                         }
                     }
@@ -56,6 +59,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
                 for (const editor of vscode.window.visibleTextEditors) {
                     try {
+                        await vscode.commands.executeCommand('chatEditing.acceptFile', editor.document.uri);
                         await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', editor.document.uri);
                         await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
                     } catch { }

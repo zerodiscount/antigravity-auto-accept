@@ -2,6 +2,14 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.11] - 2026-10-13
+
+### Fixed & Enhanced
+- **Native Chat Editing Auto-Accept Engine**: Injected `chat.editing.autoAcceptDelay: 1` into automated settings configuration, enabling VS Code's native countdown engine to auto-accept multi-file AI chat edits seamlessly.
+- **Direct Per-File Chat Acceptance**: Added explicit `chatEditing.acceptFile` calls passing target document URIs during tab and visible editor polling loops.
+- **Unblocked Programmatic Edit Detection**: Removed user interaction grace timer triggers from `workspace.onDidChangeTextDocument` so AI agent streaming edits do not pause background acceptance loops.
+- **UI Extension Kind Prioritization**: Configured `"extensionKind": ["ui", "workspace"]` to ensure the extension executes on the desktop UI client when connected via Remote-SSH.
+
 ## [1.2.10] - 2026-10-13
 
 ### Fixed & Enhanced
