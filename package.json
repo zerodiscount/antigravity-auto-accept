@@ -2,7 +2,7 @@
   "name": "antigravity-auto-accept",
   "displayName": "Antigravity AutoAcceptClose",
   "description": "Zero-friction auto-acceptance and smart auto-close for AI agent edits, diffs, and terminal commands in Google Antigravity. Automatically sweeps and closes agent-opened file tabs while protecting user files and plan reviews. Use at your own risk.",
-  "version": "1.2.16",
+  "version": "1.2.17",
   "icon": "icon.png",
   "publisher": "zerodiscount",
   "repository": {
@@ -75,11 +75,6 @@
           "type": "boolean",
           "default": true,
           "description": "Show the AutoAccept indicator in the status bar."
-        },
-        "autoAcceptAgent.showClicksInStatusBar": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show the number of auto-accepted clicks saved directly in the status bar item (e.g. '$(check) AutoAccept (12)')."
         },
         "autoAcceptAgent.enableCommandPolling": {
           "type": "boolean",

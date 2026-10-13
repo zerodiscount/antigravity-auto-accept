@@ -2,6 +2,13 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.17] - 2026-10-13
+
+### Clean Status Bar & Filtered Metrics
+- **Clean Status Bar Item**: The status bar label is now strictly `$(check) AutoAccept` without numbers taking up horizontal workspace space.
+- **Hover-Only Detailed Breakdown**: Saved clicks and breakdown metrics are displayed exclusively in the rich hover tooltip.
+- **Interactive Typing Filter**: Ignored interactive user typing events from triggering fastPoll or incrementing the auto-accepted file counter.
+
 ## [1.2.16] - 2026-10-13
 
 ### Review Changes & Diff Zone Auto-Close

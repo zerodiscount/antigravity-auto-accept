@@ -686,9 +686,10 @@ export class AutoAcceptor implements vscode.Disposable {
             vscode.workspace.onDidChangeTextDocument((e) => {
                 if (this.isRunning && e.contentChanges.length > 0) {
                     const uriStr = e.document.uri.toString();
-                    if (!this.userOpenedUris.has(uriStr)) {
-                        this.agentOpenedUris.add(uriStr);
+                    if (this.userOpenedUris.has(uriStr) || this.isUserInteracting()) {
+                        return;
                     }
+                    this.agentOpenedUris.add(uriStr);
                     this.modifiedFilesSet.add(uriStr);
                     const fileName = e.document.fileName.split(/[\\/]/).pop() || '';
                     this.lastActivity = `Edited ${fileName}`;
@@ -1113,8 +1114,7 @@ export class AutoAcceptor implements vscode.Disposable {
             const showClicksInBar = config.get<boolean>('showClicksInStatusBar', true);
             switch (state) {
                 case 'on': {
-                    const countLabel = (showClicksInBar && totalSession > 0) ? ` (${totalSession})` : '';
-                    this.statusBarItem.text = `$(check) AutoAccept${countLabel}`;
+                    this.statusBarItem.text = '$(check) AutoAccept';
                     this.statusBarItem.backgroundColor = undefined;
 
                     const md = new vscode.MarkdownString();
