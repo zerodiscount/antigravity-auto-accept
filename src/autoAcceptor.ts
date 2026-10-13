@@ -570,21 +570,22 @@ export class AutoAcceptor implements vscode.Disposable {
         let filesAcceptedInPass = 0;
         // 1b. Explicitly accept all files that had recent agent modifications
         if (this.modifiedFilesSet.size > 0) {
-            const count = this.modifiedFilesSet.size;
             const filesToAccept = Array.from(this.modifiedFilesSet);
             this.modifiedFilesSet.clear();
             for (const uriStr of filesToAccept) {
+                const isRecentlyAccepted = this.recentlyAcceptedMap.has(uriStr) && (Date.now() - this.recentlyAcceptedMap.get(uriStr)! < 4000);
                 try {
                     const uri = vscode.Uri.parse(uriStr);
                     await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
                     await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
-                    this.recentlyAcceptedMap.set(uriStr, Date.now());
-                    this.agentOpenedUris.add(uriStr);
-                    this.scheduleAutoClose(uri);
+                    if (!isRecentlyAccepted) {
+                        this.recentlyAcceptedMap.set(uriStr, Date.now());
+                        this.recordAction('file', 1);
+                        this.agentOpenedUris.add(uriStr);
+                        this.scheduleAutoClose(uri);
+                    }
                 } catch { }
             }
-            this.recordAction('file', count);
-            filesAcceptedInPass += count;
         }
 
         // 1c. Cycle through pending Cascade diff files and accept each hunk/file
@@ -610,9 +611,15 @@ export class AutoAcceptor implements vscode.Disposable {
                     const uriStr = uri.toString();
 
                     if (isDiff || isDirty) {
+                        const isRecentlyAccepted = this.recentlyAcceptedMap.has(uriStr) && (Date.now() - this.recentlyAcceptedMap.get(uriStr)! < 4000);
                         try {
                             await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
                             await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
+                            if (!isRecentlyAccepted) {
+                                this.recentlyAcceptedMap.set(uriStr, Date.now());
+                                this.recordAction('file', 1);
+                                this.agentOpenedUris.add(uriStr);
+                            }
                         } catch { }
                     }
 
@@ -629,10 +636,17 @@ export class AutoAcceptor implements vscode.Disposable {
             if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
             const uri = editor.document.uri;
             if (uri && !uri.scheme.startsWith('antigravity') && editor.document.isDirty) {
+                const uriStr = uri.toString();
+                const isRecentlyAccepted = this.recentlyAcceptedMap.has(uriStr) && (Date.now() - this.recentlyAcceptedMap.get(uriStr)! < 4000);
                 try {
                     await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
                     await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
                     await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
+                    if (!isRecentlyAccepted) {
+                        this.recentlyAcceptedMap.set(uriStr, Date.now());
+                        this.recordAction('file', 1);
+                        this.agentOpenedUris.add(uriStr);
+                    }
                 } catch { }
             }
         }
