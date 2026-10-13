@@ -2,6 +2,15 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.27] - 2026-10-13
+
+### Cascade Traversal, Multi-File Auto-Close & Tooltip Redesign
+- **Multi-File Cascade Acceptance**: Integrated native `acceptAgentStep` and Cascade diff traversal so all modified files in multi-file turns auto-accept in a single pass without getting stuck on the first file.
+- **Deterministic Auto-Close**: Agent-opened diffs and files auto-close after a configurable settling delay (default 600ms) without interfering with user-opened or pinned files.
+- **Loop & Timer Reset Prevention**: Polling strictly focuses on active diffs and dirty tabs, eliminating timer cancellation loops and false counter increments.
+- **Consolidated 2-Row Tooltip**: Redesigned status bar hover tooltip to a clean 2-row table showing `This Session` and `All-Time Total` metrics in exact lockstep.
+- **Empty Review Tab Auto-Dismissal**: Automatically dismisses the empty Review Changes tab once all changes are accepted.
+
 ## [1.2.21] - 2026-10-13
 
 ### Trusted Publisher & Clean Public Release
