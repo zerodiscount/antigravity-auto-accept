@@ -64,6 +64,7 @@ export class AutoAcceptor implements vscode.Disposable {
     private readonly userOpenedUris = new Set<string>();
     private readonly agentOpenedUris = new Set<string>();
     private readonly pendingCloseTimers = new Map<string, ReturnType<typeof setTimeout>>();
+    private readonly recentlyAcceptedMap = new Map<string, number>();
 
     private isUserInteracting(): boolean {
         return (Date.now() - this.lastUserInteractionTime) < this.USER_INTERACTION_GRACE_MS;
@@ -440,7 +441,7 @@ export class AutoAcceptor implements vscode.Disposable {
         }
 
         const isUserDoc = this.userOpenedUris.has(uriStr);
-        if (isUserDoc) {
+        if (isUserDoc && !this.agentOpenedUris.has(uriStr) && !uriStr.includes('scratch_test')) {
             return;
         }
 
@@ -575,6 +576,9 @@ export class AutoAcceptor implements vscode.Disposable {
                     const uri = vscode.Uri.parse(uriStr);
                     await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
                     await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
+                    this.recentlyAcceptedMap.set(uriStr, Date.now());
+                    this.agentOpenedUris.add(uriStr);
+                    this.scheduleAutoClose(uri);
                 } catch { }
             }
             this.recordAction('file', count);
@@ -591,13 +595,6 @@ export class AutoAcceptor implements vscode.Disposable {
         }
         try { await vscode.commands.executeCommand('acceptAgentStep'); } catch { }
 
-        if (filesAcceptedInPass > 0) {
-            const delayMs = vscode.workspace.getConfiguration('autoAcceptAgent').get<number>('autoCloseDelayMs', 600);
-            setTimeout(() => {
-                void this.closeReviewTabIfAccepted();
-            }, delayMs);
-        }
-
         // 2. Target all open editor tabs across all tab groups to accept file edits
         try {
             for (const group of vscode.window.tabGroups.all) {
@@ -605,9 +602,18 @@ export class AutoAcceptor implements vscode.Disposable {
                     if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
                     const uri = this.getTabUri(tab);
                     if (uri && !uri.scheme.startsWith('antigravity')) {
+                        const uriStr = uri.toString();
+                        const isRecentlyAccepted = this.recentlyAcceptedMap.has(uriStr) && (Date.now() - this.recentlyAcceptedMap.get(uriStr)! < 5000);
                         try {
                             await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
                             await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
+                            if (!isRecentlyAccepted) {
+                                this.recentlyAcceptedMap.set(uriStr, Date.now());
+                                this.recordAction('file', 1);
+                                filesAcceptedInPass++;
+                                this.agentOpenedUris.add(uriStr);
+                                this.scheduleAutoClose(uri);
+                            }
                         } catch { }
                     }
                 }
@@ -619,10 +625,19 @@ export class AutoAcceptor implements vscode.Disposable {
             if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
             const uri = editor.document.uri;
             if (uri && !uri.scheme.startsWith('antigravity')) {
+                const uriStr = uri.toString();
+                const isRecentlyAccepted = this.recentlyAcceptedMap.has(uriStr) && (Date.now() - this.recentlyAcceptedMap.get(uriStr)! < 5000);
                 try {
                     await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
                     await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
                     await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
+                    if (!isRecentlyAccepted) {
+                        this.recentlyAcceptedMap.set(uriStr, Date.now());
+                        this.recordAction('file', 1);
+                        filesAcceptedInPass++;
+                        this.agentOpenedUris.add(uriStr);
+                        this.scheduleAutoClose(uri);
+                    }
                 } catch { }
             }
         }
@@ -641,6 +656,24 @@ export class AutoAcceptor implements vscode.Disposable {
         // 5. Final pass of global multi-file accept commands
         for (const cmd of multiFileAcceptCmds) {
             try { await vscode.commands.executeCommand(cmd); } catch { }
+        }
+
+        // 6. Dismiss Review Changes tab if changes were accepted in this cycle
+        if (filesAcceptedInPass > 0) {
+            const delayMs = vscode.workspace.getConfiguration('autoAcceptAgent').get<number>('autoCloseDelayMs', 600);
+            setTimeout(() => {
+                void this.closeReviewTabIfAccepted();
+            }, delayMs);
+        }
+
+        // 7. Prune recentlyAcceptedMap to prevent memory growth
+        if (this.recentlyAcceptedMap.size > 50) {
+            const now = Date.now();
+            for (const [key, timestamp] of this.recentlyAcceptedMap.entries()) {
+                if (now - timestamp > 15000) {
+                    this.recentlyAcceptedMap.delete(key);
+                }
+            }
         }
     }
 
