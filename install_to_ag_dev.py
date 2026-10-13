@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
+"""
+Deploy hygient-antigravity-autoaccept directly to ag-dev container on SJC:
+- /home/frappe/.antigravity-ide-server/extensions
+- /home/frappe/.antigravity-server/extensions
+Sets ownership to frappe:frappe and updates extensions.json.
+"""
+
 import os
-import zipfile
+import sys
 import json
-import shutil
-import time
-import glob
+import subprocess
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 pkg = json.load(open(os.path.join(SCRIPT_DIR, "package.json")))
@@ -13,6 +18,27 @@ publisher = pkg.get("publisher", "zerodiscount")
 ext_name = pkg.get("name", "antigravity-auto-accept")
 ext_id = f"{publisher}.{ext_name}"
 vsix_path = os.path.join(SCRIPT_DIR, "antigravity-auto-accept.vsix")
+
+if not os.path.exists(vsix_path):
+    print(f"Error: {vsix_path} not found.")
+    sys.exit(1)
+
+# Check if running locally inside ag-dev
+is_local = os.path.exists("/home/frappe/.antigravity-ide-server") or os.path.exists("/home/frappe/.antigravity-server")
+
+remote_script = """
+import os
+import zipfile
+import json
+import shutil
+import glob
+import time
+
+version = "{{VERSION}}"
+publisher = "{{PUBLISHER}}"
+ext_name = "{{EXT_NAME}}"
+ext_id = f"{publisher}.{ext_name}"
+vsix_path = "/tmp/antigravity-auto-accept.vsix"
 
 servers = [
     "/home/frappe/.antigravity-ide-server",
@@ -24,18 +50,15 @@ for srv in servers:
     if not os.path.exists(ext_base):
         continue
 
+    print(f"[ag-dev] Processing {ext_base}...")
+
+    # Remove old versions
+    for pat in ["*autoaccept-*", "*auto-accept-*", f"{ext_id}-*"]:
+        for old_dir in glob.glob(os.path.join(ext_base, pat)):
+            print(f"  Removing: {old_dir}")
+            shutil.rmtree(old_dir, ignore_errors=True)
+
     dest_dir = os.path.join(ext_base, f"{ext_id}-{version}-universal")
-    extensions_json_path = os.path.join(ext_base, "extensions.json")
-    obsolete_json_path = os.path.join(ext_base, ".obsolete")
-
-    print(f"[ag-dev] Cleaning old extensions in {ext_base}...")
-    for pattern in ["*autoaccept-*", "*auto-accept-*", f"{ext_id}-*"]:
-        for old_dir in glob.glob(os.path.join(ext_base, pattern)):
-            if old_dir != dest_dir:
-                print(f"  Removing: {old_dir}")
-                shutil.rmtree(old_dir, ignore_errors=True)
-
-    print(f"[ag-dev] Installing v{version} to {dest_dir}...")
     os.makedirs(dest_dir, exist_ok=True)
 
     with zipfile.ZipFile(vsix_path, "r") as z:
@@ -55,7 +78,24 @@ for srv in servers:
                 with open(os.path.join(dest_dir, ".vsixmanifest"), "wb") as f:
                     f.write(z.read(member))
 
+    # Also symlink hygient identifier so both work
+    hy_link = os.path.join(ext_base, f"hygient.hygient-antigravity-autoaccept-{version}-universal")
+    if os.path.exists(hy_link) or os.path.islink(hy_link):
+        try: os.unlink(hy_link)
+        except: shutil.rmtree(hy_link, ignore_errors=True)
+    os.symlink(dest_dir, hy_link)
+
     # Update extensions.json
+    extensions_json_path = os.path.join(ext_base, "extensions.json")
+    extensions = []
+    if os.path.exists(extensions_json_path):
+        try:
+            with open(extensions_json_path, "r") as f:
+                extensions = json.load(f)
+        except Exception:
+            extensions = []
+    extensions = [e for e in extensions if "autoaccept" not in e.get("identifier", {}).get("id", "").lower() and "auto-accept" not in e.get("identifier", {}).get("id", "").lower()]
+
     ext_entry = {
         "identifier": {
             "id": ext_id
@@ -80,21 +120,13 @@ for srv in servers:
             "hasPreReleaseVersion": False
         }
     }
-
-    extensions = []
-    if os.path.exists(extensions_json_path):
-        try:
-            with open(extensions_json_path, "r") as f:
-                extensions = json.load(f)
-        except Exception:
-            extensions = []
-    extensions = [e for e in extensions if "autoaccept" not in e.get("identifier", {}).get("id", "").lower() and "auto-accept" not in e.get("identifier", {}).get("id", "").lower()]
     extensions.append(ext_entry)
 
     with open(extensions_json_path, "w") as f:
         json.dump(extensions, f, indent=2)
 
     # Clean .obsolete
+    obsolete_json_path = os.path.join(ext_base, ".obsolete")
     if os.path.exists(obsolete_json_path):
         try:
             with open(obsolete_json_path, "r") as f:
@@ -123,16 +155,36 @@ for srv in servers:
         with open(settings_path, "w") as f:
             json.dump(settings, f, indent=4)
 
-    # Fix ownership to frappe
-    try:
-        shutil.chown(dest_dir, user="frappe", group="frappe")
-        for root, dirs, files in os.walk(dest_dir):
-            for d in dirs:
-                shutil.chown(os.path.join(root, d), user="frappe", group="frappe")
-            for fl in files:
-                shutil.chown(os.path.join(root, fl), user="frappe", group="frappe")
-        shutil.chown(extensions_json_path, user="frappe", group="frappe")
-    except Exception:
-        pass
+os.system("chown -R frappe:frappe /home/frappe/.antigravity-ide-server /home/frappe/.antigravity-server 2>/dev/null")
+print(f"[ag-dev] Successfully installed v{version} on ag-dev!")
+"""
 
-print("ag-dev update complete!")
+if is_local:
+    # Run directly locally
+    code = remote_script.replace("{{VERSION}}", version).replace("{{PUBLISHER}}", publisher).replace("{{EXT_NAME}}", ext_name)
+    exec(code)
+else:
+    # Remote execution into sjc ag-dev container
+    print(f"[ag-dev] Streaming v{version} VSIX to sjc ag-dev container...")
+    cmd_transfer = f"cat '{vsix_path}' | ssh -T sjc \"sudo lxc exec ag-dev -- tee /tmp/antigravity-auto-accept.vsix > /dev/null\" ; echo EXIT_CODE=$?"
+    res = subprocess.run(cmd_transfer, shell=True, text=True, capture_output=True)
+    if res.returncode != 0 or "EXIT_CODE=0" not in res.stdout:
+        print(f"Transfer failed: {res.stderr}\n{res.stdout}")
+        sys.exit(1)
+
+    print(f"[ag-dev] Executing installer inside ag-dev container...")
+    code = remote_script.replace("{{VERSION}}", version).replace("{{PUBLISHER}}", publisher).replace("{{EXT_NAME}}", ext_name)
+    p = subprocess.Popen(
+        ['ssh', '-T', 'sjc', 'sudo lxc exec ag-dev -- python3 -'],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+    stdout, stderr = p.communicate(input=code)
+    print(stdout)
+    if p.returncode != 0:
+        print(f"Installation failed: {stderr}")
+        sys.exit(1)
+
+print("[ag-dev] Successfully deployed to ag-dev container!")
