@@ -22,7 +22,7 @@ if not os.path.exists(vsix_path):
 
 print(f"[cle] Streaming v{version} VSIX to CLE workstation...")
 
-cmd_transfer = f"cat '{vsix_path}' | ssh -T -n cle \"sudo tee /tmp/antigravity-auto-accept.vsix > /dev/null\" ; echo EXIT_CODE=$?"
+cmd_transfer = f"cat '{vsix_path}' | ssh -T cle \"sudo tee /tmp/antigravity-auto-accept.vsix > /dev/null\" ; echo EXIT_CODE=$?"
 res = subprocess.run(cmd_transfer, shell=True, text=True, capture_output=True)
 if res.returncode != 0:
     print(f"Transfer failed: {res.stderr}")
