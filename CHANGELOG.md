@@ -2,6 +2,11 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.12] - 2026-10-13
+
+### UI & UX Polish
+- **Status Bar Tooltip Version Indicator**: Added real-time extension version display (`Antigravity AutoAccept v1.2.12 (ACTIVE)`) in the status bar hover tooltip, allowing instantaneous visual confirmation of the active installed version.
+
 ## [1.2.11] - 2026-10-13
 
 ### Fixed & Enhanced
