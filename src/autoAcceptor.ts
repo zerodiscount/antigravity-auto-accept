@@ -50,6 +50,13 @@ export class AutoAcceptor implements vscode.Disposable {
         value: unknown;
     }>();
 
+    // Click & Efficiency Metrics
+    private commandsApprovedCount = 0;
+    private filesAcceptedCount = 0;
+    private tabsClosedCount = 0;
+    private lifetimeClicks = 0;
+    private readonly modifiedFilesSet = new Set<string>();
+
     // AutoClose Tracking State
     private readonly userOpenedUris = new Set<string>();
     private readonly agentOpenedUris = new Set<string>();
@@ -59,23 +66,41 @@ export class AutoAcceptor implements vscode.Disposable {
         return (Date.now() - this.lastUserInteractionTime) < this.USER_INTERACTION_GRACE_MS;
     }
 
+    private recordAction(type: 'command' | 'file' | 'tab', count = 1): void {
+        if (count <= 0) return;
+        if (type === 'command') {
+            this.commandsApprovedCount += count;
+        } else if (type === 'file') {
+            this.filesAcceptedCount += count;
+        } else if (type === 'tab') {
+            this.tabsClosedCount += count;
+        }
+        this.lifetimeClicks += count;
+        void this.context.globalState.update('autoAcceptAgent.lifetimeClicks', this.lifetimeClicks);
+        this.updateStatusBar(this.isRunning ? 'on' : 'off');
+    }
+
     /**
      * Routine accept/approve/run commands across Antigravity.
      * EXCLUDES any plan review / submission commands.
      */
     private readonly criticalAcceptCommands: string[] = [
-        // Antigravity Native Diff & File Acceptance ("Accept Changes" / "Accept All" in Cascade)
+        // Antigravity Native Diff & File Acceptance ("Accept Changes" / "Accept All" in Cascade & Working Set)
+        'chatEditor.action.acceptAllEdits',
         'chatEditing.acceptAllFiles',
         'workbench.action.chat.acceptAll',
         'antigravity.prioritized.agentAcceptAll',
-        'antigravity.agentAcceptAll',
-        'antigravity.chat.acceptAll',
-        'antigravity.acceptAll',
-        'chatEditing.acceptFile',
-        'chatEditor.action.accept',
         'antigravity.prioritized.agentAcceptAllInFile',
         'antigravity.prioritized.agentAcceptFocusedHunk',
         'antigravity.prioritized.submitCodeAcknowledgement',
+        'antigravity.agentAcceptAll',
+        'antigravity.chat.acceptAll',
+        'antigravity.acceptAll',
+        'antigravity.openReviewChanges',
+        'chatEditing.acceptFile',
+        'chatEditor.action.accept',
+        'chatEditor.action.acceptHunk',
+        'chatEditing.saveAllFiles',
 
         // Antigravity Terminal & Command Confirmation
         'antigravity.command.accept',
@@ -125,6 +150,7 @@ export class AutoAcceptor implements vscode.Disposable {
         this.statusBarItem = statusBarItem;
         this.outputChannel = outputChannel;
         this.context = context;
+        this.lifetimeClicks = this.context.globalState.get<number>('autoAcceptAgent.lifetimeClicks', 0);
         this.updateStatusBar('off');
     }
 
@@ -138,6 +164,14 @@ export class AutoAcceptor implements vscode.Disposable {
             const msg = err instanceof Error ? err.message : String(err);
             this.log(`toggle error: ${msg}`);
         }
+    }
+
+    public async acceptNow(): Promise<void> {
+        if (!this.isRunning || this.isDisposed) {
+            await this.start();
+        }
+        await this.fastPoll();
+        vscode.window.setStatusBarMessage('$(check) Antigravity AutoAccept: Accepted all pending changes', 3000);
     }
 
     public async start(): Promise<void> {
@@ -405,6 +439,7 @@ export class AutoAcceptor implements vscode.Disposable {
                 await vscode.window.tabGroups.close(tabsToClose, true);
                 this.agentOpenedUris.delete(uriStr);
                 const fileName = uri.path.split('/').pop() || uri.fsPath;
+                this.recordAction('tab', tabsToClose.length);
                 this.log(`Auto-closed accepted editor: ${fileName}`);
             }
         } catch (err: unknown) {
@@ -461,15 +496,26 @@ export class AutoAcceptor implements vscode.Disposable {
 
         // 1. Direct workspace/chat-level "Accept all" commands
         const multiFileAcceptCmds = [
+            'chatEditor.action.acceptAllEdits',
             'chatEditing.acceptAllFiles',
             'antigravity.prioritized.agentAcceptAll',
+            'antigravity.prioritized.agentAcceptAllInFile',
             'workbench.action.chat.acceptAll',
             'antigravity.agentAcceptAll',
             'antigravity.chat.acceptAll',
             'antigravity.acceptAll',
+            'chatEditing.saveAllFiles',
+            'chatEditor.action.accept',
+            'chatEditor.action.acceptHunk',
         ];
         for (const cmd of multiFileAcceptCmds) {
             try { await vscode.commands.executeCommand(cmd); } catch { }
+        }
+
+        if (this.modifiedFilesSet.size > 0) {
+            const count = this.modifiedFilesSet.size;
+            this.modifiedFilesSet.clear();
+            this.recordAction('file', count);
         }
 
         // 2. Target all open editor tabs across all tab groups (covers background & unpinned tabs)
@@ -583,6 +629,7 @@ export class AutoAcceptor implements vscode.Disposable {
                     }
 
                     this.executedCount++;
+                    this.recordAction('command', 1);
                     this.lastActivity = commandLine;
                     this.log(`✅ Terminal command approved: ${commandLine}`);
                     await this.fastPoll();
@@ -603,10 +650,27 @@ export class AutoAcceptor implements vscode.Disposable {
             })
         );
 
+        let docChangeDebounce: ReturnType<typeof setTimeout> | null = null;
         this.trackingDisposables.push(
             vscode.workspace.onDidChangeTextDocument((e) => {
                 if (this.isRunning && e.contentChanges.length > 0) {
-                    this.lastActivity = `Edited ${e.document.fileName.split(/[\\/]/).pop()}`;
+                    const uriStr = e.document.uri.toString();
+                    if (!this.userOpenedUris.has(uriStr)) {
+                        this.agentOpenedUris.add(uriStr);
+                    }
+                    this.modifiedFilesSet.add(uriStr);
+                    const fileName = e.document.fileName.split(/[\\/]/).pop() || '';
+                    this.lastActivity = `Edited ${fileName}`;
+
+                    if (docChangeDebounce) {
+                        clearTimeout(docChangeDebounce);
+                    }
+                    docChangeDebounce = setTimeout(() => {
+                        void (async () => {
+                            if (!this.isRunning || this.isDisposed || this.isUserInteracting()) return;
+                            await this.fastPoll();
+                        })().catch(() => {});
+                    }, 400);
                 }
             })
         );
@@ -1012,23 +1076,53 @@ export class AutoAcceptor implements vscode.Disposable {
         }
 
         try {
-            const version = this.context.extension?.packageJSON?.version || '1.2.14';
+            const version = this.context.extension?.packageJSON?.version || '1.2.15';
+            const totalSession = this.commandsApprovedCount + this.filesAcceptedCount + this.tabsClosedCount;
+            const totalLifetime = this.lifetimeClicks;
+            const showClicksInBar = config.get<boolean>('showClicksInStatusBar', true);
             switch (state) {
-                case 'on':
-                    this.statusBarItem.text = '$(check) AutoAccept';
-                    this.statusBarItem.tooltip =
-                        `Antigravity AutoAccept v${version} (ACTIVE)\n` +
-                        `• Auto-accepts routine tool commands & diffs\n` +
-                        `• Auto-closes accepted agent files (preserves user & pinned tabs)\n` +
-                        `• Plan reviews ("Proceed", "Review") remain MANUAL\n` +
-                        `Click to toggle.`;
+                case 'on': {
+                    const countLabel = (showClicksInBar && totalSession > 0) ? ` (${totalSession})` : '';
+                    this.statusBarItem.text = `$(check) AutoAccept${countLabel}`;
                     this.statusBarItem.backgroundColor = undefined;
+
+                    const md = new vscode.MarkdownString();
+                    md.isTrusted = true;
+                    md.supportThemeIcons = true;
+                    md.appendMarkdown(`### Antigravity AutoAccept v${version} $(pass-filled)\n\n`);
+                    if (totalSession > 0) {
+                        md.appendMarkdown(`**⚡ ${totalSession} clicks saved this session** (${totalLifetime} lifetime)\n\n`);
+                    } else {
+                        md.appendMarkdown(`**⚡ Ready to save clicks** (${totalLifetime} saved all-time)\n\n`);
+                    }
+                    md.appendMarkdown(`| Action | Auto-Accepted |\n`);
+                    md.appendMarkdown(`| :--- | :---: |\n`);
+                    md.appendMarkdown(`| **Terminal Commands** | \`${this.commandsApprovedCount}\` |\n`);
+                    md.appendMarkdown(`| **File Edits & Diffs** | \`${this.filesAcceptedCount}\` |\n`);
+                    md.appendMarkdown(`| **Agent Tabs Auto-Closed** | \`${this.tabsClosedCount}\` |\n\n`);
+                    md.appendMarkdown(`---\n`);
+                    md.appendMarkdown(`*• Routine tool commands and file diffs are accepted automatically.*\n`);
+                    md.appendMarkdown(`*• Plan reviews ("Proceed", "Review", "Submit") remain strictly protected.*\n\n`);
+                    md.appendMarkdown(`[⚡ Accept All Pending Now (Ctrl+Shift+Y)](command:autoAcceptAgent.acceptNow) &nbsp;|&nbsp; [Pause AutoAccept](command:autoAcceptAgent.toggle)`);
+                    this.statusBarItem.tooltip = md;
                     break;
-                case 'off':
-                    this.statusBarItem.text = '$(circle-slash) AutoAccept: OFF';
-                    this.statusBarItem.tooltip = `Antigravity AutoAccept v${version} is stopped. Click to start.`;
-                    this.statusBarItem.backgroundColor = undefined;
+                }
+                case 'off': {
+                    this.statusBarItem.text = `$(circle-slash) AutoAccept: OFF`;
+                    this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+
+                    const md = new vscode.MarkdownString();
+                    md.isTrusted = true;
+                    md.supportThemeIcons = true;
+                    md.appendMarkdown(`### Antigravity AutoAccept v${version} $(circle-slash)\n\n`);
+                    md.appendMarkdown(`*AutoAccept is currently PAUSED.*\n\n`);
+                    if (totalSession > 0) {
+                        md.appendMarkdown(`⚡ **${totalSession} clicks saved this session** (${totalLifetime} lifetime)\n\n`);
+                    }
+                    md.appendMarkdown(`[Resume AutoAccept](command:autoAcceptAgent.toggle)`);
+                    this.statusBarItem.tooltip = md;
                     break;
+                }
             }
             this.statusBarItem.show();
         } catch { }

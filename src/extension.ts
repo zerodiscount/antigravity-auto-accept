@@ -31,60 +31,7 @@ export function activate(context: vscode.ExtensionContext): void {
             cmd('autoAcceptAgent.start', () => acceptor!.start()),
             cmd('autoAcceptAgent.stop', () => acceptor!.stop()),
             cmd('autoAcceptAgent.diagnostics', () => runDiagnostics(output)),
-            cmd('autoAcceptAgent.acceptNow', async () => {
-                const multiFileCmds = [
-                    'chatEditing.acceptAllFiles',
-                    'antigravity.prioritized.agentAcceptAll',
-                    'workbench.action.chat.acceptAll',
-                    'antigravity.agentAcceptAll',
-                    'antigravity.chat.acceptAll',
-                    'antigravity.acceptAll',
-                ];
-                for (const mc of multiFileCmds) {
-                    try { await vscode.commands.executeCommand(mc); } catch { }
-                }
-
-                try {
-                    for (const group of vscode.window.tabGroups.all) {
-                        for (const tab of group.tabs) {
-                            const inputAny = tab?.input as { uri?: vscode.Uri; modified?: vscode.Uri };
-                            const uri = inputAny?.uri || inputAny?.modified;
-                            if (uri) {
-                                try {
-                                    await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
-                                    await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
-                                } catch { }
-                            }
-                        }
-                    }
-                } catch { }
-
-                for (const editor of vscode.window.visibleTextEditors) {
-                    try {
-                        await vscode.commands.executeCommand('chatEditing.acceptFile', editor.document.uri);
-                        await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', editor.document.uri);
-                        await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
-                    } catch { }
-                }
-                const cmds = [
-                    'chatEditing.acceptAllFiles',
-                    'workbench.action.chat.acceptAll',
-                    'antigravity.prioritized.agentAcceptAll',
-                    'antigravity.prioritized.agentAcceptAllInFile',
-                    'antigravity.prioritized.agentAcceptFocusedHunk',
-                    'antigravity.prioritized.submitCodeAcknowledgement',
-                    'antigravity.command.accept',
-                    'antigravity.terminalCommand.accept',
-                    'antigravity.terminalCommand.run',
-                    'inlineChat.acceptChanges',
-                    'chat.action.acceptTool',
-                    'workbench.action.chat.accept',
-                    'workbench.action.terminal.chat.runCommand',
-                ];
-                for (const c of cmds) {
-                    try { await vscode.commands.executeCommand(c); } catch { }
-                }
-            }),
+            cmd('autoAcceptAgent.acceptNow', () => acceptor!.acceptNow()),
             acceptor
         );
 

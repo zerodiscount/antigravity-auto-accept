@@ -2,6 +2,14 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.15] - 2026-10-13
+
+### Clicks Saved Metrics & Batch Acceptance
+- **Real-Time Clicks Saved Tracker**: Added session and lifetime metrics tracking for auto-approved terminal commands, auto-accepted file edits/diffs, and auto-closed agent tabs.
+- **Rich Hover Tooltip Breakdown**: The status bar hover tooltip now displays an interactive GitHub-flavored Markdown table breaking down clicks saved by category (`Terminal Commands`, `File Edits & Diffs`, `Agent Tabs Auto-Closed`) with one-click shortcut links to accept all pending changes immediately (`Ctrl+Shift+Y`).
+- **Instant Event-Driven Batch Acceptance**: Attached a fast 400ms debounced acceptance sweep on `workspace.onDidChangeTextDocument`, instantly executing `chatEditor.action.acceptAllEdits` and `chatEditing.acceptAllFiles` as soon as agent edits stream in without waiting for periodic polling intervals.
+- **Status Bar Click Counter**: Added `autoAcceptAgent.showClicksInStatusBar` (default `true`) to show live session savings directly in the status bar (e.g. `$(check) AutoAccept (14)`).
+
 ## [1.2.14] - 2026-10-13
 
 ### Legal & Governance
