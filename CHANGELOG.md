@@ -2,6 +2,18 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.20] - 2026-10-13
+
+### Fix Review Changes Tab Flashing Loop
+- **Removed `openReviewChanges` From Acceptance Pipeline**: Purged `antigravity.openReviewChanges` from routine acceptance commands. Executing an open command in a polling loop repeatedly forced the Review Changes tab open against user actions.
+- **Protected Review & Diff Tabs**: Completely removed the aggressive review/diff tab sweeping step in `fastPoll()`. Review Changes tabs, diff editors, and custom review views are strictly protected and never closed by background polling or auto-close routines.
+- **Accurate Event-Driven AutoClose**: Cleaned up `fastPoll` to only accept pending edits without scheduling tab closures. Editor auto-close is now triggered cleanly upon `workspace.onDidSaveTextDocument` strictly for agent-opened documents, preventing unprompted tab closures.
+
+## [1.2.19] - 2026-10-13
+
+### Status Bar Clutter Elimination
+- **Fixed Width Status Bar**: Fixed status bar text to `$(check) AutoAccept` without continuous count increments.
+
 ## [1.2.18] - 2026-10-13
 
 ### Auto-Close All Diff & Review Tabs

@@ -96,7 +96,6 @@ export class AutoAcceptor implements vscode.Disposable {
         'antigravity.agentAcceptAll',
         'antigravity.chat.acceptAll',
         'antigravity.acceptAll',
-        'antigravity.openReviewChanges',
         'chatEditing.acceptFile',
         'chatEditor.action.accept',
         'chatEditor.action.acceptHunk',
@@ -347,6 +346,10 @@ export class AutoAcceptor implements vscode.Disposable {
 
     private getTabUri(tab: vscode.Tab): vscode.Uri | undefined {
         if (!tab || !tab.input) { return undefined; }
+        const labelLower = (tab.label || '').toLowerCase();
+        if (labelLower.includes('review') || labelLower.includes('changes')) {
+            return undefined;
+        }
         if (tab.input instanceof vscode.TabInputText) {
             return tab.input.uri;
         }
@@ -354,7 +357,11 @@ export class AutoAcceptor implements vscode.Disposable {
             return tab.input.modified || tab.input.original;
         }
         const inputAny = tab.input as any;
-        return inputAny?.uri || inputAny?.modified || inputAny?.original || inputAny?.resource || inputAny?.targetUri;
+        const uri = inputAny?.uri || inputAny?.modified || inputAny?.original || inputAny?.resource || inputAny?.targetUri;
+        if (uri && (uri.scheme === 'antigravity-review-changes' || uri.scheme.startsWith('antigravity'))) {
+            return undefined;
+        }
+        return uri;
     }
 
     private seedOpenTabs(): void {
@@ -421,6 +428,10 @@ export class AutoAcceptor implements vscode.Disposable {
         }
 
         const isUserDoc = this.userOpenedUris.has(uriStr);
+        if (isUserDoc) {
+            return;
+        }
+
         const fileName = uri.path.split('/').pop() || uri.fsPath;
 
         try {
@@ -429,16 +440,18 @@ export class AutoAcceptor implements vscode.Disposable {
                 for (const tab of group.tabs) {
                     if (tab.isDirty || tab.isPinned) continue;
 
-                    const tabUri = this.getTabUri(tab);
-                    const isMatchingUri = tabUri && tabUri.toString() === uriStr;
-                    const isDiffTab = tab.input instanceof vscode.TabInputTextDiff;
                     const labelLower = (tab.label || '').toLowerCase();
-                    const isReviewTab = (labelLower.includes('review') || labelLower.includes('changes')) &&
-                        (!fileName || labelLower.includes(fileName.toLowerCase()));
+                    // Strictly protect Review Changes tabs, diff editors, and Antigravity custom editors
+                    if (labelLower.includes('review') || labelLower.includes('changes') || tab.input instanceof vscode.TabInputTextDiff) {
+                        continue;
+                    }
 
-                    if (isReviewTab || (isDiffTab && isMatchingUri)) {
-                        tabsToClose.push(tab);
-                    } else if (isMatchingUri && !isUserDoc) {
+                    const tabUri = this.getTabUri(tab);
+                    if (!tabUri || tabUri.scheme.startsWith('antigravity')) {
+                        continue;
+                    }
+
+                    if (tabUri.toString() === uriStr && tab.input instanceof vscode.TabInputText) {
                         tabsToClose.push(tab);
                     }
                 }
@@ -446,16 +459,10 @@ export class AutoAcceptor implements vscode.Disposable {
 
             if (tabsToClose.length > 0) {
                 await vscode.window.tabGroups.close(tabsToClose, true);
-                if (!isUserDoc) {
-                    this.agentOpenedUris.delete(uriStr);
-                }
+                this.agentOpenedUris.delete(uriStr);
                 this.recordAction('tab', tabsToClose.length);
-                this.log(`Auto-closed accepted editor / review tab: ${fileName}`);
+                this.log(`Auto-closed accepted agent editor tab: ${fileName}`);
             }
-
-            try {
-                await vscode.commands.executeCommand('antigravity.closeAllDiffZones');
-            } catch { }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
             this.log(`Auto-close error for ${uri.path}: ${msg}`);
@@ -532,23 +539,16 @@ export class AutoAcceptor implements vscode.Disposable {
             this.recordAction('file', count);
         }
 
-        // 2. Target all open editor tabs across all tab groups (covers background & unpinned tabs)
+        // 2. Target all open editor tabs across all tab groups to accept file edits
         try {
             for (const group of vscode.window.tabGroups.all) {
                 for (const tab of group.tabs) {
                     if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
                     const uri = this.getTabUri(tab);
-                    if (uri) {
-                        const uriStr = uri.toString();
-                        if (!this.userOpenedUris.has(uriStr)) {
-                            this.agentOpenedUris.add(uriStr);
-                        }
+                    if (uri && !uri.scheme.startsWith('antigravity')) {
                         try {
                             await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
                             await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
-                            if (this.agentOpenedUris.has(uriStr) && !this.userOpenedUris.has(uriStr)) {
-                                this.scheduleAutoClose(uri);
-                            }
                         } catch { }
                     }
                 }
@@ -559,18 +559,13 @@ export class AutoAcceptor implements vscode.Disposable {
         for (const editor of vscode.window.visibleTextEditors) {
             if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
             const uri = editor.document.uri;
-            const uriStr = uri.toString();
-            if (!this.userOpenedUris.has(uriStr)) {
-                this.agentOpenedUris.add(uriStr);
+            if (uri && !uri.scheme.startsWith('antigravity')) {
+                try {
+                    await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
+                    await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
+                    await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
+                } catch { }
             }
-            try {
-                await vscode.commands.executeCommand('chatEditing.acceptFile', uri);
-                await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile', uri);
-                await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
-                if (this.agentOpenedUris.has(uriStr) && !this.userOpenedUris.has(uriStr)) {
-                    this.scheduleAutoClose(uri);
-                }
-            } catch { }
         }
 
         // 4. Critical command polling for terminal & inline approval
@@ -583,33 +578,6 @@ export class AutoAcceptor implements vscode.Disposable {
                 // Not active — continue
             }
         }
-
-        // 5. Sweep any lingering diff tabs (TabInputTextDiff) and Review Changes tabs that are clean & unpinned
-        try {
-            const reviewTabs: vscode.Tab[] = [];
-            for (const group of vscode.window.tabGroups.all) {
-                for (const tab of group.tabs) {
-                    if (tab.isDirty || tab.isPinned) continue;
-
-                    const labelLower = (tab.label || '').toLowerCase();
-                    const isDiffTab = tab.input instanceof vscode.TabInputTextDiff;
-                    const isReviewLabel = labelLower.includes('review') || labelLower.includes('changes');
-                    const inputAny = tab.input as any;
-                    const isCustomReview = inputAny?.viewType?.toLowerCase().includes('review') ||
-                        inputAny?.viewType?.toLowerCase().includes('antigravity');
-
-                    if (isDiffTab || isReviewLabel || isCustomReview) {
-                        reviewTabs.push(tab);
-                    }
-                }
-            }
-            if (reviewTabs.length > 0) {
-                await vscode.window.tabGroups.close(reviewTabs, true);
-                this.recordAction('tab', reviewTabs.length);
-                this.log(`Auto-closed ${reviewTabs.length} lingering Review/Diff tab(s)`);
-                try { await vscode.commands.executeCommand('antigravity.closeAllDiffZones'); } catch { }
-            }
-        } catch { }
     }
 
     private async fullPoll(): Promise<void> {
@@ -718,6 +686,17 @@ export class AutoAcceptor implements vscode.Disposable {
         );
 
         this.trackingDisposables.push(
+            vscode.workspace.onDidSaveTextDocument((doc) => {
+                if (this.isRunning && !this.isDisposed) {
+                    const uriStr = doc.uri.toString();
+                    if (this.agentOpenedUris.has(uriStr) && !this.userOpenedUris.has(uriStr)) {
+                        this.scheduleAutoClose(doc.uri);
+                    }
+                }
+            })
+        );
+
+        this.trackingDisposables.push(
             vscode.window.onDidChangeActiveTextEditor(async (editor) => {
                 if (this.isRunning && !this.isDisposed) {
                     if (editor && this.isUserInteracting()) {
@@ -762,12 +741,6 @@ export class AutoAcceptor implements vscode.Disposable {
                                 try {
                                     await vscode.commands.executeCommand(cmd);
                                 } catch { }
-                            }
-                            for (const ed of vscode.window.visibleTextEditors) {
-                                const uStr = ed.document.uri.toString();
-                                if (this.agentOpenedUris.has(uStr) && !this.userOpenedUris.has(uStr)) {
-                                    this.scheduleAutoClose(ed.document.uri);
-                                }
                             }
                         })().catch(() => { });
                     }, 350);
