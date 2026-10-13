@@ -2,6 +2,12 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.28] - 2026-10-13
+
+### Open-VSX Registry Sync & Active Status Restoration
+- **Public Open-VSX Release**: Published `1.2.28` to the Open-VSX registry under the `zerodiscount` namespace.
+- **Active Status Verification**: Re-synchronized extension metadata and active status following catalog index updates.
+
 ## [1.2.27] - 2026-10-13
 
 ### Cascade Traversal, Multi-File Auto-Close & Tooltip Redesign

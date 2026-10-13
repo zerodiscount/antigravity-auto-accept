@@ -22,3 +22,4 @@ install_to_ag_*.py
 *.py
 *.sh
 scratch/**
+scratch_test/**
