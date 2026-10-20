@@ -847,21 +847,13 @@ export class AutoAcceptor implements vscode.Disposable {
             );
         }
 
-        // Track user interaction: if user clicks into editor to inspect, cancel auto-close countdown!
+        // Track user interaction: if user clicks into editor or moves cursor, cancel auto-close countdown and keep open!
         this.trackingDisposables.push(
             vscode.window.onDidChangeTextEditorSelection((e) => {
-                if (e.kind === vscode.TextEditorSelectionChangeKind.Keyboard || e.kind === vscode.TextEditorSelectionChangeKind.Mouse) {
-                    this.lastUserInteractionTime = Date.now();
-                    const uriStr = e.textEditor.document.uri.toString();
-                    if (this.pendingCloseTimers.has(uriStr)) {
-                        this.cancelPendingClose(uriStr);
-                        this.agentOpenedUris.delete(uriStr);
-                        const fileName = e.textEditor.document.fileName.split(/[\\/]/).pop() || '';
-                        this.log(`User clicked/interacted with ${fileName}: cancelled auto-close to keep open for inspection.`);
-                        try {
-                            void vscode.commands.executeCommand('workbench.action.files.resetActiveEditorReadonlyInSession');
-                        } catch { }
-                    }
+                this.lastUserInteractionTime = Date.now();
+                const uriStr = e.textEditor.document.uri.toString();
+                if (this.pendingCloseTimers.has(uriStr)) {
+                    this.cancelAutoCloseAndKeep(uriStr, 'User clicked or moved cursor inside editor');
                 }
             })
         );
@@ -882,13 +874,31 @@ export class AutoAcceptor implements vscode.Disposable {
 
         this.trackingDisposables.push(
             vscode.window.tabGroups.onDidChangeTabs((e) => {
-                if (this.isRunning && !this.isDisposed && !this.isUserInteracting()) {
-                    for (const tab of e.opened) {
-                        const uri = this.getTabUri(tab);
-                        if (!uri || uri.scheme.startsWith('antigravity')) continue;
-                        const uriStr = uri.toString();
-                        if (this.agentOpenedUris.has(uriStr) && !tab.isDirty && !(tab.input instanceof vscode.TabInputTextDiff)) {
-                            this.scheduleAutoClose(uri);
+                if (this.isRunning && !this.isDisposed) {
+                    // Detect user clicking a tab header to focus/inspect it
+                    for (const tab of e.changed) {
+                        if (tab.isActive) {
+                            const uri = this.getTabUri(tab);
+                            if (uri) {
+                                const uriStr = uri.toString();
+                                if (this.pendingCloseTimers.has(uriStr)) {
+                                    const scheduledAt = this.scheduledCloseTimes.get(uriStr);
+                                    if (!scheduledAt || Date.now() - scheduledAt > 300) {
+                                        this.cancelAutoCloseAndKeep(uriStr, 'User clicked tab header');
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (!this.isUserInteracting()) {
+                        for (const tab of e.opened) {
+                            const uri = this.getTabUri(tab);
+                            if (!uri || uri.scheme.startsWith('antigravity')) continue;
+                            const uriStr = uri.toString();
+                            if (this.agentOpenedUris.has(uriStr) && !tab.isDirty && !(tab.input instanceof vscode.TabInputTextDiff)) {
+                                this.scheduleAutoClose(uri);
+                            }
                         }
                     }
                 }
@@ -938,6 +948,16 @@ export class AutoAcceptor implements vscode.Disposable {
         this.trackingDisposables.push(
             vscode.window.onDidChangeActiveTextEditor(async (editor) => {
                 if (this.isRunning && !this.isDisposed) {
+                    if (editor) {
+                        const uriStr = editor.document.uri.toString();
+                        if (this.pendingCloseTimers.has(uriStr)) {
+                            const scheduledAt = this.scheduledCloseTimes.get(uriStr);
+                            if (!scheduledAt || Date.now() - scheduledAt > 300) {
+                                this.cancelAutoCloseAndKeep(uriStr, 'User switched to tab/focused editor');
+                            }
+                        }
+                    }
+
                     if (this.isUserInteracting()) { return; }
 
                     setTimeout(() => {
