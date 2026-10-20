@@ -379,12 +379,15 @@ export class AutoAcceptor implements vscode.Disposable {
 
     private seedOpenTabs(): void {
         this.userOpenedUris.clear();
+        this.userKeptUris.clear();
+        this.agentOpenedUris.clear();
         try {
             for (const group of vscode.window.tabGroups.all) {
                 for (const tab of group.tabs) {
                     const uri = this.getTabUri(tab);
                     if (uri) {
-                        this.userOpenedUris.add(uri.toString());
+                        const uriStr = uri.toString();
+                        this.userOpenedUris.add(uriStr);
                     }
                 }
             }
@@ -397,6 +400,21 @@ export class AutoAcceptor implements vscode.Disposable {
             clearTimeout(timer);
             this.pendingCloseTimers.delete(uriStr);
         }
+        this.scheduledCloseTimes.delete(uriStr);
+    }
+
+    private cancelAutoCloseAndKeep(uriStr: string, reason: string): void {
+        this.cancelPendingClose(uriStr);
+        this.agentOpenedUris.delete(uriStr);
+        this.userKeptUris.add(uriStr);
+        this.userOpenedUris.add(uriStr);
+
+        try {
+            void vscode.commands.executeCommand('workbench.action.files.resetActiveEditorReadonlyInSession');
+        } catch { }
+
+        const fileName = uriStr.split('/').pop() || uriStr;
+        this.log(`[Keep Tab] ${reason} on ${fileName} — cancelled auto-close, kept open.`);
     }
 
     private clearPendingCloses(): void {
@@ -404,7 +422,9 @@ export class AutoAcceptor implements vscode.Disposable {
             clearTimeout(timer);
         }
         this.pendingCloseTimers.clear();
+        this.scheduledCloseTimes.clear();
         this.userOpenedUris.clear();
+        this.userKeptUris.clear();
         this.agentOpenedUris.clear();
     }
 
@@ -415,14 +435,21 @@ export class AutoAcceptor implements vscode.Disposable {
         }
 
         const uriStr = uri.toString();
-        if (!this.agentOpenedUris.has(uriStr) && !uriStr.includes('scratch_test')) {
+        // If user explicitly chose to keep this file, never auto close
+        if (this.userKeptUris.has(uriStr)) {
             return;
         }
 
-        // If a close timer is already pending for this URI, do not cancel or reset it!
+        if (!this.agentOpenedUris.has(uriStr)) {
+            return;
+        }
+
+        // If a close timer is already pending for this URI, do not reset it
         if (this.pendingCloseTimers.has(uriStr)) {
             return;
         }
+
+        this.scheduledCloseTimes.set(uriStr, Date.now());
 
         // 1. Immediately lock editor Read-Only to guarantee no keystrokes enter the code buffer
         if (config.get<boolean>('lockAgentEditorsReadOnly', true)) {
@@ -438,7 +465,7 @@ export class AutoAcceptor implements vscode.Disposable {
             } catch { }
         }
 
-        const delayMs = config.get<number>('autoCloseDelayMs', 3000);
+        const delayMs = config.get<number>('autoCloseDelayMs', 5000);
         if (delayMs <= 0) {
             void this.executeAutoClose(uri).catch(() => { });
             return;
@@ -453,12 +480,17 @@ export class AutoAcceptor implements vscode.Disposable {
     private async executeAutoClose(uri: vscode.Uri): Promise<void> {
         const uriStr = uri.toString();
         this.pendingCloseTimers.delete(uriStr);
+        this.scheduledCloseTimes.delete(uriStr);
 
-        if (!this.isRunning || this.isDisposed || this.isUserInteracting()) {
+        if (!this.isRunning || this.isDisposed) {
             return;
         }
 
-        if (!this.agentOpenedUris.has(uriStr) && !uriStr.includes('scratch_test')) {
+        if (this.userKeptUris.has(uriStr)) {
+            return;
+        }
+
+        if (!this.agentOpenedUris.has(uriStr)) {
             return;
         }
 
@@ -522,12 +554,15 @@ export class AutoAcceptor implements vscode.Disposable {
                     await vscode.commands.executeCommand('antigravity.closeAllDiffZones');
                 } catch { }
 
-                // Restore chat prompt focus if enabled so focus does not spill into adjacent editor
+                // Restore chat prompt focus if enabled
                 const autoRestore = vscode.workspace.getConfiguration('autoAcceptAgent').get<boolean>('autoRestoreChatFocus', true);
                 if (autoRestore) {
                     try {
                         await vscode.commands.executeCommand('workbench.action.chat.focusInput');
                     } catch { }
+                    setTimeout(() => {
+                        void vscode.commands.executeCommand('workbench.action.chat.focusInput').then(undefined, () => {});
+                    }, 60);
                 }
             }
         } catch (err: unknown) {
@@ -640,14 +675,11 @@ export class AutoAcceptor implements vscode.Disposable {
             }
         }
 
-        // 1c. Cycle through pending Cascade diff files and accept each hunk/file
-        for (let i = 0; i < 6; i++) {
-            try {
-                await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile');
-                await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
-                await vscode.commands.executeCommand('antigravity.prioritized.agentFocusNextFile');
-            } catch { }
-        }
+        // 1c. Accept pending Cascade diff files and hunks without stealing editor focus
+        try {
+            await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile');
+            await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
+        } catch { }
         try { await vscode.commands.executeCommand('acceptAgentStep'); } catch { }
 
         // 2. Target open editor tabs ONLY if they have active diffs or are dirty
