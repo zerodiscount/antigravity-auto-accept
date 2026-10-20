@@ -602,6 +602,7 @@ export class AutoAcceptor implements vscode.Disposable {
 
         const config = vscode.workspace.getConfiguration('autoAcceptAgent');
         const intervalMs = config.get<number>('pollIntervalMs', 10000);
+        const fastIntervalMs = config.get<number>('fastPollIntervalMs', 250);
 
         if (this.fastPollInterval) {
             clearInterval(this.fastPollInterval);
@@ -612,13 +613,13 @@ export class AutoAcceptor implements vscode.Disposable {
             this.pollInterval = null;
         }
 
-        // Fast poll for critical commands (accept agent steps, notifications)
+        // Fast poll for critical commands (accept agent steps, diffs, notifications)
         this.fastPollInterval = setInterval(() => {
             void this.fastPoll().catch((err: unknown) => {
                 const msg = err instanceof Error ? err.message : String(err);
                 this.log(`Fast poll interval error: ${msg}`);
             });
-        }, Math.max(200, Math.floor(intervalMs / 2)));
+        }, Math.max(100, fastIntervalMs));
 
         // Standard poll for all commands
         this.pollInterval = setInterval(() => {
@@ -628,7 +629,7 @@ export class AutoAcceptor implements vscode.Disposable {
             });
         }, intervalMs);
 
-        this.log(`Command polling started: fast=${Math.max(200, Math.floor(intervalMs / 2))}ms, full=${intervalMs}ms`);
+        this.log(`Command polling started: fast=${Math.max(100, fastIntervalMs)}ms, full=${intervalMs}ms`);
     }
 
     private shouldInterceptNotifications(): boolean {
