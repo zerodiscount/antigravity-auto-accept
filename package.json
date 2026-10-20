@@ -2,7 +2,7 @@
   "name": "antigravity-auto-accept",
   "displayName": "Antigravity AutoAcceptClose",
   "description": "Zero-friction auto-acceptance and smart auto-close for AI agent edits, diffs, and terminal commands in Google Antigravity. Automatically sweeps and closes agent-opened file tabs while protecting user files and plan reviews. Use at your own risk.",
-  "version": "1.2.28",
+  "version": "1.2.29",
   "icon": "icon.png",
   "publisher": "zerodiscount",
   "repository": {
@@ -132,15 +132,30 @@
         },
         "autoAcceptAgent.autoCloseDelayMs": {
           "type": "integer",
-          "default": 600,
-          "minimum": 200,
+          "default": 100,
+          "minimum": 0,
           "maximum": 5000,
-          "description": "Delay in milliseconds before closing an auto-accepted editor tab to allow background saves to settle."
+          "description": "Delay in milliseconds before closing an auto-accepted editor tab to allow background saves to settle. Set to 0 for instant auto-close."
         },
         "autoAcceptAgent.autoCloseReviewChangesTab": {
           "type": "boolean",
           "default": true,
           "description": "Automatically close the Review Changes tab once all agent changes in the step have been accepted."
+        },
+        "autoAcceptAgent.autoRestoreChatFocus": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically restore focus to the agent chat prompt bar when accepting edits or closing editor tabs so typing is never misdirected into files."
+        },
+        "autoAcceptAgent.preventEditorFocusStealing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Prevent background Cascade file acceptance loops from actively stealing input focus from the chat prompt bar into editor tabs."
+        },
+        "autoAcceptAgent.lockAgentEditorsReadOnly": {
+          "type": "boolean",
+          "default": true,
+          "description": "Lock agent-opened editor tabs in read-only mode during active auto-acceptance to completely block accidental typing into code files."
         }
       }
     }

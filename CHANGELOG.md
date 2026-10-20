@@ -2,6 +2,15 @@
 
 All notable changes to Auto Accept Antigravity are documented here.
 
+## [1.2.29] - 2026-10-20
+
+### Prompt Focus Preservation & Anti-Typing File Protection
+- **Instant Chat Focus Bouncer (`autoRestoreChatFocus`)**: Automatically bounces input focus straight back to the agent chat prompt bar whenever an agent-opened file tab is activated or auto-closed. Eliminates the disruptive focus jump while typing user prompts.
+- **Session Read-Only Protection (`lockAgentEditorsReadOnly`)**: Automatically locks newly opened agent tabs in session read-only mode during acceptance, guaranteeing that accidental keystrokes can never insert text into code files.
+- **Removed Editor Focus Stealing (`preventEditorFocusStealing`)**: Removed `agentFocusNextFile` from the background fast-polling loop. Cascade changes are accepted cleanly in the background without pulling the active tab into the foreground.
+- **Instant Auto-Close Lag Removal (`autoCloseDelayMs: 0`)**: Allowed `autoCloseDelayMs` to be configured down to `0ms` (default lowered to `100ms`). Agent-accepted files and diffs close virtually instantaneously.
+- **Clean Diff Zone Purging**: Added automatic invocation of `antigravity.closeAllDiffZones` post-acceptance so no floating inline diff widgets linger.
+
 ## [1.2.28] - 2026-10-13
 
 ### Open-VSX Registry Sync & Active Status Restoration

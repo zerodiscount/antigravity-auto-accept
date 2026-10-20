@@ -425,7 +425,11 @@ export class AutoAcceptor implements vscode.Disposable {
             return;
         }
 
-        const delayMs = config.get<number>('autoCloseDelayMs', 600);
+        const delayMs = config.get<number>('autoCloseDelayMs', 100);
+        if (delayMs <= 0) {
+            void this.executeAutoClose(uri).catch(() => { });
+            return;
+        }
         const timer = setTimeout(() => {
             void this.executeAutoClose(uri).catch(() => { });
         }, delayMs);
@@ -482,6 +486,19 @@ export class AutoAcceptor implements vscode.Disposable {
                     this.recordAction('file', tabsToClose.length);
                 }
                 this.log(`Auto-closed accepted agent editor tab: ${fileName}`);
+
+                // Clean floating diff zones
+                try {
+                    await vscode.commands.executeCommand('antigravity.closeAllDiffZones');
+                } catch { }
+
+                // Restore chat prompt focus if enabled
+                const autoRestore = vscode.workspace.getConfiguration('autoAcceptAgent').get<boolean>('autoRestoreChatFocus', true);
+                if (autoRestore) {
+                    try {
+                        await vscode.commands.executeCommand('workbench.action.chat.focusInput');
+                    } catch { }
+                }
             }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
@@ -594,11 +611,14 @@ export class AutoAcceptor implements vscode.Disposable {
         }
 
         // 1c. Cycle through pending Cascade diff files and accept each hunk/file
+        const preventFocusSteal = vscode.workspace.getConfiguration('autoAcceptAgent').get<boolean>('preventEditorFocusStealing', true);
         for (let i = 0; i < 6; i++) {
             try {
                 await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile');
                 await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
-                await vscode.commands.executeCommand('antigravity.prioritized.agentFocusNextFile');
+                if (!preventFocusSteal) {
+                    await vscode.commands.executeCommand('antigravity.prioritized.agentFocusNextFile');
+                }
             } catch { }
         }
         try { await vscode.commands.executeCommand('acceptAgentStep'); } catch { }
@@ -674,10 +694,19 @@ export class AutoAcceptor implements vscode.Disposable {
 
         // 6. Dismiss Review Changes tab if changes were accepted in this cycle
         if (filesAcceptedInPass > 0) {
-            const delayMs = vscode.workspace.getConfiguration('autoAcceptAgent').get<number>('autoCloseDelayMs', 600);
-            setTimeout(() => {
+            const delayMs = vscode.workspace.getConfiguration('autoAcceptAgent').get<number>('autoCloseDelayMs', 100);
+            if (delayMs <= 0) {
                 void this.closeReviewTabIfAccepted();
-            }, delayMs);
+            } else {
+                setTimeout(() => {
+                    void this.closeReviewTabIfAccepted();
+                }, delayMs);
+            }
+            if (vscode.workspace.getConfiguration('autoAcceptAgent').get<boolean>('autoRestoreChatFocus', true)) {
+                try {
+                    await vscode.commands.executeCommand('workbench.action.chat.focusInput');
+                } catch { }
+            }
         }
 
         // 7. Prune recentlyAcceptedMap to prevent memory growth
@@ -813,6 +842,27 @@ export class AutoAcceptor implements vscode.Disposable {
                         this.cancelPendingClose(uriStr);
                     }
                     if (this.isUserInteracting()) { return; }
+
+                    if (editor) {
+                        const uriStr = editor.document.uri.toString();
+                        const isAgentDoc = this.agentOpenedUris.has(uriStr) && !this.userOpenedUris.has(uriStr);
+                        const config = vscode.workspace.getConfiguration('autoAcceptAgent');
+
+                        // If typing lock is enabled and editor was opened by agent, set read-only in session
+                        if (isAgentDoc && config.get<boolean>('lockAgentEditorsReadOnly', true)) {
+                            try {
+                                await vscode.commands.executeCommand('workbench.action.files.setActiveEditorReadonlyInSession');
+                            } catch { }
+                        }
+
+                        // If autoRestoreChatFocus is enabled and editor was opened by agent, bounce focus back to chat
+                        if (isAgentDoc && config.get<boolean>('autoRestoreChatFocus', true)) {
+                            try {
+                                await vscode.commands.executeCommand('workbench.action.chat.focusInput');
+                            } catch { }
+                        }
+                    }
+
                     setTimeout(() => {
                         void (async () => {
                             if (!this.isRunning || this.isDisposed || this.isUserInteracting()) { return; }
