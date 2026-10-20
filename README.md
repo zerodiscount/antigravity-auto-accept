@@ -66,12 +66,14 @@ Existing community extensions attempt to address this, but suffer from critical 
 
 ## Key Features
 
-- 🚪 **Intelligent AutoClose for Agent Files**: Automatically sweeps and closes file tabs opened during autonomous AI agent coding runs once changes are accepted and saved to disk. User-opened files and pinned tabs are whitelisted and never closed.
+- 🚪 **Intelligent AutoClose for Agent Files**: Automatically sweeps and closes file tabs opened or modified during autonomous AI agent coding runs once changes are accepted and saved to disk. User-opened files unedited by agents and pinned tabs remain untouched.
+- 🎯 **Click-to-Keep Inspection Window**: Configurable grace window (default 5s) before auto-closing accepted files. If you click anywhere on the tab header or inside the file, auto-close is immediately cancelled and the file stays open permanently for manual inspection.
+- ⚓ **Chat Focus Retention & Read-Only Safety**: Anchors your keyboard focus in the Antigravity chat input prompt. Prevents background Cascade loops from stealing focus into editor tabs. Files are temporarily marked read-only during acceptance so accidental keystrokes never overwrite code.
 - ⚡ **True Native Command Integration**: Directly interfaces with Antigravity's internal command registry (`antigravity.prioritized.agentAcceptAllInFile`, `antigravity.closeAllDiffZones`, `antigravity.prioritized.agentAcceptFocusedHunk`, `antigravity.prioritized.submitCodeAcknowledgement`, `inlineChat.acceptChanges`, `chat.action.acceptTool`).
 - 🌐 **Remote-SSH & Container Native**: Operates via VS Code's Extension Host API. Works identically whether you are on your local laptop, an SSH remote server, or an LXC/Docker container.
 - 🛡️ **Plan Review Safety Gate**: Human-in-the-loop decisions should remain human. Buttons like `"Proceed"`, `"Approve Plan"`, `"Review"`, `"Submit Feedback"`, and `"Reject"` are strictly excluded from auto-approval.
-- ⌨️ **Smart Typing Debounce**: Monitors editor keystrokes and selection changes. Pauses automated loops for 1,500ms whenever you type or navigate, ensuring your cursor is never stolen.
-- 🧹 **Automatic Diff Cleanup**: Cleans up floating Monaco diff widgets once accepted so they don't linger across editor tabs.
+- ⌨️ **Smart Typing Debounce**: Monitors editor keystrokes and selection changes. Pauses automated loops for 1,500ms whenever you type or navigate in code.
+- 🧹 **Automatic Diff Cleanup**: Cleans up floating Monaco diff widgets and closes the "Review Changes" tab once all edits are applied.
 - 🔘 **One-Click Manual Sweep (`Ctrl+Shift+Y` / `Cmd+Shift+Y`)**: Instantly sweep and accept all visible file diffs across all open split panes with a single hotkey.
 
 ---
@@ -94,7 +96,7 @@ code --install-extension zerodiscount.antigravity-auto-accept
 
 ### Method 2: Install from VSIX Release Asset
 
-1. Download [`antigravity-auto-accept.vsix`](https://github.com/zerodiscount/antigravity-auto-accept/releases/download/v1.2.0/antigravity-auto-accept.vsix) from [GitHub Releases](https://github.com/zerodiscount/antigravity-auto-accept/releases/latest).
+1. Download [`antigravity-auto-accept.vsix`](https://github.com/zerodiscount/antigravity-auto-accept/releases/latest) from [GitHub Releases](https://github.com/zerodiscount/antigravity-auto-accept/releases/latest).
 2. In Antigravity IDE, press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS).
 3. Type **`Extensions: Install from VSIX...`** and select the downloaded file.
 4. Reload the IDE window when prompted (`Developer: Reload Window`).
@@ -128,20 +130,33 @@ Customize behavior in your `settings.json` or through the IDE Settings UI:
   // Automatically close agent-opened editor tabs after acceptance (default: true)
   "autoAcceptAgent.autoCloseAcceptedEditors": true,
 
-  // Debounce delay in ms before closing accepted editor tabs (default: 600)
-  "autoAcceptAgent.autoCloseDelayMs": 600,
+  // Delay in ms before closing an accepted tab (default: 5000ms = 5s).
+  // Clicking the tab or editing during this window cancels auto-close (Click-to-Keep). Set to 0 for instant auto-close.
+  "autoAcceptAgent.autoCloseDelayMs": 5000,
+
+  // Automatically close the Review Changes tab once all agent changes are accepted (default: true)
+  "autoAcceptAgent.autoCloseReviewChangesTab": true,
+
+  // Keep focus anchored in the chat prompt bar so typing is never misdirected into editor tabs (default: true)
+  "autoAcceptAgent.autoRestoreChatFocus": true,
+
+  // Prevent background Cascade diff loops from stealing focus from the prompt bar (default: true)
+  "autoAcceptAgent.preventEditorFocusStealing": true,
+
+  // Lock agent-opened tabs Read-Only during the inspection window to protect code from accidental keystrokes (default: true)
+  "autoAcceptAgent.lockAgentEditorsReadOnly": true,
 
   // Enable routine command polling (default: true)
   "autoAcceptAgent.enableCommandPolling": true,
 
-  // Interval in ms between polling sweeps (default: 800)
-  "autoAcceptAgent.pollIntervalMs": 800,
+  // Interval in ms between polling sweeps (default: 10000)
+  "autoAcceptAgent.pollIntervalMs": 10000,
 
   // Automatically configure VS Code settings to skip approval prompts (default: true)
   "autoAcceptAgent.autoConfigureSettings": true,
 
-  // Automatically accept confirmation notifications (default: true)
-  "autoAcceptAgent.interceptNotifications": true,
+  // Automatically accept confirmation notifications (default: false)
+  "autoAcceptAgent.interceptNotifications": false,
 
   // Commands that will NEVER be auto-accepted (safety blacklist)
   "autoAcceptAgent.blockedCommands": [
