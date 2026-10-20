@@ -445,8 +445,7 @@ export class AutoAcceptor implements vscode.Disposable {
             return;
         }
 
-        const isUserDoc = this.userOpenedUris.has(uriStr);
-        if (isUserDoc && !this.agentOpenedUris.has(uriStr) && !uriStr.includes('scratch_test')) {
+        if (!this.agentOpenedUris.has(uriStr) && !uriStr.includes('scratch_test')) {
             return;
         }
 
@@ -454,10 +453,10 @@ export class AutoAcceptor implements vscode.Disposable {
 
         try {
             const tabsToClose: vscode.Tab[] = [];
+            let hasDirtyOrDiffTab = false;
+
             for (const group of vscode.window.tabGroups.all) {
                 for (const tab of group.tabs) {
-                    if (tab.isDirty || tab.isPinned) continue;
-
                     const labelLower = (tab.label || '').toLowerCase();
                     // Protect Review Changes tab (handled separately by closeReviewTabIfAccepted)
                     if (labelLower === 'review changes' || labelLower.startsWith('review changes')) {
@@ -469,14 +468,32 @@ export class AutoAcceptor implements vscode.Disposable {
                         continue;
                     }
 
-                    // Close any tab matching this accepted URI (text or diff)
+                    // Check any tab matching this accepted URI (text or diff)
                     if (tabUri.toString() === uriStr) {
+                        if (tab.isPinned) {
+                            continue;
+                        }
+                        if (tab.isDirty || tab.input instanceof vscode.TabInputTextDiff) {
+                            hasDirtyOrDiffTab = true;
+                            continue;
+                        }
                         tabsToClose.push(tab);
                     }
                 }
             }
 
+            if (hasDirtyOrDiffTab && tabsToClose.length === 0) {
+                // Tab is still being written or diffed - re-check shortly
+                this.scheduleAutoClose(uri);
+                return;
+            }
+
             if (tabsToClose.length > 0) {
+                // Reset read-only session before closing tab so it doesn't persist
+                try {
+                    void vscode.commands.executeCommand('workbench.action.files.resetActiveEditorReadonlyInSession');
+                } catch { }
+
                 await vscode.window.tabGroups.close(tabsToClose, true);
                 this.agentOpenedUris.delete(uriStr);
                 this.recordAction('tab', tabsToClose.length);
@@ -492,7 +509,7 @@ export class AutoAcceptor implements vscode.Disposable {
                     await vscode.commands.executeCommand('antigravity.closeAllDiffZones');
                 } catch { }
 
-                // Restore chat prompt focus if enabled
+                // Restore chat prompt focus if enabled so focus does not spill into adjacent editor
                 const autoRestore = vscode.workspace.getConfiguration('autoAcceptAgent').get<boolean>('autoRestoreChatFocus', true);
                 if (autoRestore) {
                     try {
@@ -611,14 +628,11 @@ export class AutoAcceptor implements vscode.Disposable {
         }
 
         // 1c. Cycle through pending Cascade diff files and accept each hunk/file
-        const preventFocusSteal = vscode.workspace.getConfiguration('autoAcceptAgent').get<boolean>('preventEditorFocusStealing', true);
         for (let i = 0; i < 6; i++) {
             try {
                 await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptAllInFile');
                 await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
-                if (!preventFocusSteal) {
-                    await vscode.commands.executeCommand('antigravity.prioritized.agentFocusNextFile');
-                }
+                await vscode.commands.executeCommand('antigravity.prioritized.agentFocusNextFile');
             } catch { }
         }
         try { await vscode.commands.executeCommand('acceptAgentStep'); } catch { }
@@ -649,7 +663,7 @@ export class AutoAcceptor implements vscode.Disposable {
                     }
 
                     // If it is an agent-opened or scratch test tab and clean, ensure auto-close is scheduled once
-                    if ((this.agentOpenedUris.has(uriStr) || uriStr.includes('scratch_test')) && !isDirty) {
+                    if ((this.agentOpenedUris.has(uriStr) || uriStr.includes('scratch_test')) && !isDirty && !isDiff) {
                         this.scheduleAutoClose(uri);
                     }
                 }
@@ -786,11 +800,50 @@ export class AutoAcceptor implements vscode.Disposable {
             );
         }
 
-        // Track user interaction: pause polling only while user is actively typing on keyboard
+        // Track user interaction: if user clicks into editor to inspect, cancel auto-close countdown!
         this.trackingDisposables.push(
             vscode.window.onDidChangeTextEditorSelection((e) => {
-                if (e.kind === vscode.TextEditorSelectionChangeKind.Keyboard) {
+                if (e.kind === vscode.TextEditorSelectionChangeKind.Keyboard || e.kind === vscode.TextEditorSelectionChangeKind.Mouse) {
                     this.lastUserInteractionTime = Date.now();
+                    const uriStr = e.textEditor.document.uri.toString();
+                    if (this.pendingCloseTimers.has(uriStr)) {
+                        this.cancelPendingClose(uriStr);
+                        this.agentOpenedUris.delete(uriStr);
+                        const fileName = e.textEditor.document.fileName.split(/[\\/]/).pop() || '';
+                        this.log(`User clicked/interacted with ${fileName}: cancelled auto-close to keep open for inspection.`);
+                        try {
+                            void vscode.commands.executeCommand('workbench.action.files.resetActiveEditorReadonlyInSession');
+                        } catch { }
+                    }
+                }
+            })
+        );
+
+        this.trackingDisposables.push(
+            vscode.workspace.onDidCreateFiles((e) => {
+                if (this.isRunning && !this.isDisposed) {
+                    for (const fileUri of e.files) {
+                        const uriStr = fileUri.toString();
+                        if (fileUri.scheme.startsWith('antigravity') || fileUri.scheme === 'output') continue;
+                        this.agentOpenedUris.add(uriStr);
+                        this.modifiedFilesSet.add(uriStr);
+                        this.scheduleAutoClose(fileUri);
+                    }
+                }
+            })
+        );
+
+        this.trackingDisposables.push(
+            vscode.window.tabGroups.onDidChangeTabs((e) => {
+                if (this.isRunning && !this.isDisposed && !this.isUserInteracting()) {
+                    for (const tab of e.opened) {
+                        const uri = this.getTabUri(tab);
+                        if (!uri || uri.scheme.startsWith('antigravity')) continue;
+                        const uriStr = uri.toString();
+                        if (this.agentOpenedUris.has(uriStr) && !tab.isDirty && !(tab.input instanceof vscode.TabInputTextDiff)) {
+                            this.scheduleAutoClose(uri);
+                        }
+                    }
                 }
             })
         );
@@ -801,6 +854,9 @@ export class AutoAcceptor implements vscode.Disposable {
                 if (this.isRunning && e.contentChanges.length > 0) {
                     const uriStr = e.document.uri.toString();
                     if (e.document.uri.scheme.startsWith('antigravity') || e.document.uri.scheme === 'output') {
+                        return;
+                    }
+                    if (this.isUserInteracting()) {
                         return;
                     }
                     this.agentOpenedUris.add(uriStr);
@@ -825,7 +881,7 @@ export class AutoAcceptor implements vscode.Disposable {
             vscode.workspace.onDidSaveTextDocument((doc) => {
                 if (this.isRunning && !this.isDisposed) {
                     const uriStr = doc.uri.toString();
-                    if (this.agentOpenedUris.has(uriStr) && !this.userOpenedUris.has(uriStr)) {
+                    if (this.agentOpenedUris.has(uriStr)) {
                         this.scheduleAutoClose(doc.uri);
                     }
                 }
@@ -835,33 +891,7 @@ export class AutoAcceptor implements vscode.Disposable {
         this.trackingDisposables.push(
             vscode.window.onDidChangeActiveTextEditor(async (editor) => {
                 if (this.isRunning && !this.isDisposed) {
-                    if (editor && this.isUserInteracting()) {
-                        const uriStr = editor.document.uri.toString();
-                        this.userOpenedUris.add(uriStr);
-                        this.agentOpenedUris.delete(uriStr);
-                        this.cancelPendingClose(uriStr);
-                    }
                     if (this.isUserInteracting()) { return; }
-
-                    if (editor) {
-                        const uriStr = editor.document.uri.toString();
-                        const isAgentDoc = this.agentOpenedUris.has(uriStr) && !this.userOpenedUris.has(uriStr);
-                        const config = vscode.workspace.getConfiguration('autoAcceptAgent');
-
-                        // If typing lock is enabled and editor was opened by agent, set read-only in session
-                        if (isAgentDoc && config.get<boolean>('lockAgentEditorsReadOnly', true)) {
-                            try {
-                                await vscode.commands.executeCommand('workbench.action.files.setActiveEditorReadonlyInSession');
-                            } catch { }
-                        }
-
-                        // If autoRestoreChatFocus is enabled and editor was opened by agent, bounce focus back to chat
-                        if (isAgentDoc && config.get<boolean>('autoRestoreChatFocus', true)) {
-                            try {
-                                await vscode.commands.executeCommand('workbench.action.chat.focusInput');
-                            } catch { }
-                        }
-                    }
 
                     setTimeout(() => {
                         void (async () => {

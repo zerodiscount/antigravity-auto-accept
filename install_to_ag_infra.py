@@ -56,6 +56,16 @@ for srv in servers:
                 with open(os.path.join(dest_dir, ".vsixmanifest"), "wb") as f:
                     f.write(z.read(member))
 
+    # Symlink hygient prefix
+    hygient_link = os.path.join(ext_base, f"hygient.hygient-antigravity-autoaccept-{version}-universal")
+    if os.path.exists(hygient_link) or os.path.islink(hygient_link):
+        try: os.unlink(hygient_link)
+        except: shutil.rmtree(hygient_link, ignore_errors=True)
+    try:
+        os.symlink(dest_dir, hygient_link)
+    except Exception as e:
+        print(f"Warning: could not create hygient symlink: {e}")
+
     # Update extensions.json
     ext_entry = {
         "identifier": {
