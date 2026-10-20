@@ -132,10 +132,10 @@
         },
         "autoAcceptAgent.autoCloseDelayMs": {
           "type": "integer",
-          "default": 5000,
+          "default": 3000,
           "minimum": 0,
           "maximum": 60000,
-          "description": "Delay in milliseconds before closing an auto-accepted editor tab (default: 5000ms = 5s). During this window, the file is locked Read-Only and focus is held in chat. Click the tab header or inside the file to cancel auto-close and keep it open for inspection. Set to 0 for instant auto-close."
+          "description": "Delay in milliseconds before closing an auto-accepted editor tab (e.g. 3000ms = 3s). During this window, the file is locked Read-Only and focus is held in chat. Click the file to cancel auto-close and keep it open. Set to 0 for instant auto-close."
         },
         "autoAcceptAgent.autoCloseReviewChangesTab": {
           "type": "boolean",

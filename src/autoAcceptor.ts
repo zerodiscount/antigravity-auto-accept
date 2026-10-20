@@ -62,6 +62,8 @@ export class AutoAcceptor implements vscode.Disposable {
 
     // AutoClose Tracking State
     private readonly userOpenedUris = new Set<string>();
+    private readonly userKeptUris = new Set<string>();
+    private readonly scheduledCloseTimes = new Map<string, number>();
     private readonly agentOpenedUris = new Set<string>();
     private readonly pendingCloseTimers = new Map<string, ReturnType<typeof setTimeout>>();
     private readonly recentlyAcceptedMap = new Map<string, number>();
@@ -561,7 +563,7 @@ export class AutoAcceptor implements vscode.Disposable {
                         await vscode.commands.executeCommand('workbench.action.chat.focusInput');
                     } catch { }
                     setTimeout(() => {
-                        void vscode.commands.executeCommand('workbench.action.chat.focusInput').then(undefined, () => {});
+                        void vscode.commands.executeCommand('workbench.action.chat.focusInput').then(undefined, () => { });
                     }, 60);
                 }
             }
