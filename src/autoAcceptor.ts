@@ -415,8 +415,7 @@ export class AutoAcceptor implements vscode.Disposable {
         }
 
         const uriStr = uri.toString();
-        const isUserDoc = this.userOpenedUris.has(uriStr);
-        if (isUserDoc && !this.agentOpenedUris.has(uriStr) && !uriStr.includes('scratch_test')) {
+        if (!this.agentOpenedUris.has(uriStr) && !uriStr.includes('scratch_test')) {
             return;
         }
 
@@ -425,7 +424,21 @@ export class AutoAcceptor implements vscode.Disposable {
             return;
         }
 
-        const delayMs = config.get<number>('autoCloseDelayMs', 100);
+        // 1. Immediately lock editor Read-Only to guarantee no keystrokes enter the code buffer
+        if (config.get<boolean>('lockAgentEditorsReadOnly', true)) {
+            try {
+                void vscode.commands.executeCommand('workbench.action.files.setActiveEditorReadonlyInSession');
+            } catch { }
+        }
+
+        // 2. Instantly restore focus to chat input bar so user can keep typing without interruption
+        if (config.get<boolean>('autoRestoreChatFocus', true)) {
+            try {
+                void vscode.commands.executeCommand('workbench.action.chat.focusInput');
+            } catch { }
+        }
+
+        const delayMs = config.get<number>('autoCloseDelayMs', 3000);
         if (delayMs <= 0) {
             void this.executeAutoClose(uri).catch(() => { });
             return;
