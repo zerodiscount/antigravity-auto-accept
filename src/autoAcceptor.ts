@@ -111,7 +111,6 @@ export class AutoAcceptor implements vscode.Disposable {
         'chatEditing.acceptFile',
         'chatEditor.action.accept',
         'chatEditor.action.acceptHunk',
-        'chatEditing.saveAllFiles',
 
         // Antigravity Terminal & Command Confirmation
         'antigravity.command.accept',
@@ -149,6 +148,7 @@ export class AutoAcceptor implements vscode.Disposable {
         ['chat.agent', 'autoApprove', true],
         ['chat.agent', 'maxRequests', 999],
         ['chat.editing', 'autoAcceptDelay', 1],
+        ['files', 'hotExit', 'off'],
     ];
 
     private context: vscode.ExtensionContext;
@@ -216,6 +216,7 @@ export class AutoAcceptor implements vscode.Disposable {
         }
 
         this.seedOpenTabs();
+        void this.revertConflictedDirtyDocuments();
         this.startCommandPolling();
         this.setupEventTracking();
         this.startCDPPolling();
@@ -649,7 +650,6 @@ export class AutoAcceptor implements vscode.Disposable {
             'chatEditing.acceptAllFiles',
             'antigravity.prioritized.agentAcceptAllInFile',
             'workbench.action.chat.acceptAll',
-            'chatEditing.saveAllFiles',
             'chatEditor.action.accept',
             'chatEditor.action.acceptHunk',
         ];
@@ -791,6 +791,7 @@ export class AutoAcceptor implements vscode.Disposable {
         this.isPollInProgress = true;
 
         try {
+            await this.revertConflictedDirtyDocuments();
             for (const cmd of this.secondaryAcceptCommands) {
                 if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
                 try {
@@ -804,6 +805,75 @@ export class AutoAcceptor implements vscode.Disposable {
             this.log(`Poll error: ${msg}`);
         } finally {
             this.isPollInProgress = false;
+        }
+    }
+
+    /**
+     * Detects dirty TextDocuments that fail to save due to "File Modified Since" conflicts
+     * (e.g., stale Hot Exit backups where the file on disk was updated externally) and
+     * automatically reverts the stale in-memory buffer to match disk.
+     */
+    private async revertConflictedDirtyDocuments(): Promise<void> {
+        if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { return; }
+
+        try {
+            const openTabUris = new Set<string>();
+            const dirtyUris = new Map<string, vscode.Uri>();
+
+            for (const group of vscode.window.tabGroups.all) {
+                for (const tab of group.tabs) {
+                    const uri = this.getTabUri(tab);
+                    if (!uri || uri.scheme !== 'file' && uri.scheme !== 'vscode-remote') { continue; }
+                    openTabUris.add(uri.toString());
+                    if (tab.isDirty && !(tab.input instanceof vscode.TabInputTextDiff)) {
+                        dirtyUris.set(uri.toString(), uri);
+                    }
+                }
+            }
+
+            for (const doc of vscode.workspace.textDocuments) {
+                if (doc.isDirty && !doc.isUntitled && (doc.uri.scheme === 'file' || doc.uri.scheme === 'vscode-remote')) {
+                    dirtyUris.set(doc.uri.toString(), doc.uri);
+                }
+            }
+
+            for (const [uriStr, uri] of dirtyUris.entries()) {
+                if (this.isDisposed || !this.isRunning || this.isUserInteracting()) { break; }
+                let doc: vscode.TextDocument;
+                try {
+                    doc = await vscode.workspace.openTextDocument(uri);
+                } catch {
+                    continue;
+                }
+                if (!doc.isDirty) { continue; }
+
+                let saved = false;
+                try {
+                    saved = await doc.save();
+                } catch {
+                    saved = false;
+                }
+
+                if (!saved && doc.isDirty) {
+                    this.log(`Reverting stale conflicted buffer: ${uri.fsPath}`);
+                    const wasOpenInTab = openTabUris.has(uriStr);
+                    try {
+                        await vscode.commands.executeCommand('workbench.action.files.revert', uri);
+                    } catch { }
+                    if (doc.isDirty) {
+                        try {
+                            await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: false });
+                            await vscode.commands.executeCommand('workbench.action.files.revert');
+                            if (!wasOpenInTab) {
+                                await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+                            }
+                        } catch { }
+                    }
+                }
+            }
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            this.log(`revertConflictedDirtyDocuments error: ${msg}`);
         }
     }
 
